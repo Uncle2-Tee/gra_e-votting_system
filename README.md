@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GRA E-Voting Management System
 
-## Getting Started
+A Next.js application foundation for managing organization elections. PostgreSQL and Prisma are the planned data layer.
 
-First, run the development server:
+## Current foundation
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js App Router with the existing TypeScript, Tailwind CSS, Shadcn Nova, Base UI, and Lucide setup.
+- Separate voter and administrator portal components in `components/voters_portal.tsx` and `components/admin_portal.tsx`.
+- `/` redirects to `/vote`, which renders the voter portal. The administrator dashboard component is not rendered on a public route; `/admin` remains a restricted placeholder until authentication and server-side authorization exist.
+- Prisma schema for administrators, encrypted voter details, election-specific eligibility, candidates, imports, audit events, participation, and ballots.
+- Server-only Prisma client in `lib/prisma.ts`.
+- `.env.example` contains a placeholder connection URL; it is not a working credential.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Data model
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `User`, `AdminSession`: administrator accounts and hashed session tokens.
+- `Voter`, `VoterVerification`: encrypted voter profile fields, keyed identifier lookup, and hashed verification challenges.
+- `Election`, `Position`, `Candidate`: election configuration and the candidate/position relationship.
+- `ElectionVoter`, `CredentialIssuance`, `VoteParticipation`: per-election eligibility, identity-side credential issuance status, and participation tracking.
+- `Ballot`, `BallotSelection`: anonymous credential digests and selections, with no voter or eligibility foreign key.
+- `DatasetImport`, `DatasetImportRecord`: import summaries and row outcomes without retaining raw spreadsheet values.
+- `AuditLog`: administrative/security event records; append-only database permissions or triggers still need to be configured.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Database setup
 
-## Learn More
+1. Choose a PostgreSQL provider and create a development database.
+2. Copy `.env.example` to `.env.local` and replace the placeholder `DATABASE_URL` with the provider's development connection URL.
+3. Generate the Prisma client with `npm run db:generate`.
+4. Validate the schema with `npm run db:validate`.
+5. After reviewing the schema against the configured development database, create a migration with `npm run db:migrate`.
 
-To learn more about Next.js, take a look at the following resources:
+Do not use production credentials for local development or commit `.env.local`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Ballot privacy status
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The schema deliberately has no voter or eligibility foreign key on `Ballot` or `BallotSelection`. Eligibility-side participation and anonymous ballots are stored separately. This structural separation does **not** by itself guarantee ballot anonymity. Anonymous credential issuance and verification require a mature, independently reviewed protocol; that mechanism is not implemented, so this foundation is not ready to conduct a real election.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Voter identification, contact, and name fields are represented as ciphertext, with a separate lookup-hash field for identifiers. Encryption, key management, and keyed lookup implementation remain to be designed and reviewed before importing real voter data.
