@@ -43,7 +43,7 @@ async function AuthenticatedDashboard({
   }
 
   return (
-    <AdminDashboardShell adminName={admin.name}>
+    <AdminDashboardShell>
       {children}
     </AdminDashboardShell>
   );

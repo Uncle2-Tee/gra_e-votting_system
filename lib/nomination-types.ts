@@ -43,5 +43,6 @@ export type PendingNomination = {
 
 export type PendingNominationData = {
   applications: PendingNomination[];
+  approvedApplications: PendingNomination[];
   error: string | null;
 };

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { connection } from "next/server";
+import { synchronizeElectionStatuses } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 
 export type AdminOverview = {
@@ -18,6 +19,7 @@ export type AdminOverview = {
     status: string;
     startsAt: string | null;
     endsAt: string | null;
+    timezone: string;
   }[];
   auditEvents: {
     id: string;
@@ -37,6 +39,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   await connection();
 
   try {
+    await synchronizeElectionStatuses();
     const [
       totalElections,
       registeredVoters,
@@ -44,7 +47,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       participants,
       elections,
       auditEvents,
-    ] = await prisma.$transaction([
+    ] = await Promise.all([
       prisma.election.count(),
       prisma.voter.count(),
       prisma.electionVoter.count({ where: { status: "ELIGIBLE" } }),
@@ -60,6 +63,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
           status: true,
           startsAt: true,
           endsAt: true,
+          timezone: true,
         },
       }),
       prisma.auditLog.findMany({

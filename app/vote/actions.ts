@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import sharp from "sharp";
@@ -141,69 +142,105 @@ export async function submitNominationApplication(
 
     const applicantLookupHash = createNominationLookupHash(name, email, phone);
     const normalizedPhone = normalizePhoneNumber(phone);
-    const result = await prisma.$transaction(async (transaction) => {
-      const lockedElections = await transaction.$queryRaw<{ status: string }[]>(
-        Prisma.sql`SELECT "status" FROM "Election" WHERE "id" = ${position.electionId} FOR SHARE`,
-      );
-      if (lockedElections[0]?.status !== "PUBLISHED") {
-        return "closed" as const;
-      }
-
-      const existing = await transaction.candidate.findUnique({
-        where: {
-          positionId_applicantLookupHash: {
-            positionId,
-            applicantLookupHash,
-          },
-        },
-        select: { id: true, status: true },
-      });
-
-      if (existing?.status === "PENDING" || existing?.status === "APPROVED") {
-        return "duplicate" as const;
-      }
-
-      const candidateData = {
-        nameCiphertext: encryptVoterField(name, "candidate-name"),
-        applicantEmailCiphertext: encryptVoterField(email, "nomination-email"),
-        applicantPhoneCiphertext: encryptVoterField(normalizedPhone, "nomination-phone"),
-        applicantLookupHash,
-        biography,
-        photoData,
-        photoMimeType: photoData ? "image/webp" : null,
-        status: "PENDING" as const,
-        reviewedById: null,
-        reviewedAt: null,
-        reviewNote: null,
-      };
-
-      const candidate = existing
-        ? await transaction.candidate.update({
-            where: { id: existing.id },
-            data: candidateData,
-            select: { id: true },
-          })
-        : await transaction.candidate.create({
-            data: { ...candidateData, electionId: position.electionId, positionId },
-            select: { id: true },
-          });
-
-      await transaction.auditLog.create({
-        data: {
-          action: "CANDIDATE_NOMINATION_SUBMITTED",
-          entityType: "CANDIDATE",
-          entityId: candidate.id,
-          outcome: "PENDING_REVIEW",
-          metadata: {
-            electionId: position.electionId,
-            positionId,
-            hasProfilePhoto: Boolean(photoData),
-          },
-        },
-      });
-
-      return "submitted" as const;
-    });
+    const nameCiphertext = encryptVoterField(name, "candidate-name");
+    const applicantEmailCiphertext = encryptVoterField(email, "nomination-email");
+    const applicantPhoneCiphertext = encryptVoterField(normalizedPhone, "nomination-phone");
+    const candidateId = randomUUID();
+    const auditId = randomUUID();
+    const resultRows = await prisma.$queryRaw<{ result: "closed" | "duplicate" | "submitted" }[]>(
+      Prisma.sql`
+        WITH eligible_election AS MATERIALIZED (
+          SELECT "id"
+          FROM "Election"
+          WHERE "id" = ${position.electionId}::uuid
+            AND "status" IN ('SCHEDULED', 'PUBLISHED')
+            AND ("startsAt" IS NULL OR "startsAt" > CURRENT_TIMESTAMP)
+            AND ("endsAt" IS NULL OR "endsAt" > CURRENT_TIMESTAMP)
+          FOR SHARE
+        ),
+        saved_candidate AS (
+          INSERT INTO "Candidate" (
+            "id",
+            "electionId",
+            "positionId",
+            "nameCiphertext",
+            "applicantEmailCiphertext",
+            "applicantPhoneCiphertext",
+            "applicantLookupHash",
+            "biography",
+            "photoData",
+            "photoMimeType",
+            "status",
+            "reviewedById",
+            "reviewedAt",
+            "reviewNote",
+            "updatedAt"
+          )
+          SELECT
+            ${candidateId}::uuid,
+            ${position.electionId}::uuid,
+            ${positionId}::uuid,
+            ${nameCiphertext},
+            ${applicantEmailCiphertext},
+            ${applicantPhoneCiphertext},
+            ${applicantLookupHash},
+            ${biography},
+            ${photoData},
+            ${photoData ? "image/webp" : null},
+            'PENDING'::"CandidateStatus",
+            NULL,
+            NULL,
+            NULL,
+            CURRENT_TIMESTAMP
+          FROM eligible_election
+          ON CONFLICT ("positionId", "applicantLookupHash")
+          DO UPDATE SET
+            "nameCiphertext" = EXCLUDED."nameCiphertext",
+            "applicantEmailCiphertext" = EXCLUDED."applicantEmailCiphertext",
+            "applicantPhoneCiphertext" = EXCLUDED."applicantPhoneCiphertext",
+            "biography" = EXCLUDED."biography",
+            "photoData" = EXCLUDED."photoData",
+            "photoMimeType" = EXCLUDED."photoMimeType",
+            "status" = 'PENDING',
+            "reviewedById" = NULL,
+            "reviewedAt" = NULL,
+            "reviewNote" = NULL,
+            "updatedAt" = CURRENT_TIMESTAMP
+          WHERE "Candidate"."status" IN ('REJECTED', 'INACTIVE')
+          RETURNING "id"
+        ),
+        audit_entry AS (
+          INSERT INTO "AuditLog" (
+            "id",
+            "action",
+            "entityType",
+            "entityId",
+            "outcome",
+            "metadata"
+          )
+          SELECT
+            ${auditId}::uuid,
+            'CANDIDATE_NOMINATION_SUBMITTED',
+            'CANDIDATE',
+            "id",
+            'PENDING_REVIEW',
+            ${JSON.stringify({
+              electionId: position.electionId,
+              positionId,
+              hasProfilePhoto: Boolean(photoData),
+            })}::jsonb
+          FROM saved_candidate
+          RETURNING "id"
+        )
+        SELECT CASE
+          WHEN NOT EXISTS (SELECT 1 FROM eligible_election) THEN 'closed'
+          WHEN EXISTS (SELECT 1 FROM saved_candidate) THEN 'submitted'
+          ELSE 'duplicate'
+        END AS "result",
+        (SELECT COUNT(*) FROM audit_entry) AS "auditCount"
+      `,
+    );
+    const result = resultRows[0]?.result;
 
     if (result === "closed") {
       return {
@@ -216,6 +253,9 @@ export async function submitNominationApplication(
         ...INITIAL_STATE,
         error: "An application with these details is already pending or approved for this form.",
       };
+    }
+    if (result !== "submitted") {
+      throw new Error("The nomination submission query returned no result.");
     }
 
     revalidatePath("/vote");

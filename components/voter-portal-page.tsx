@@ -19,9 +19,9 @@ export default function VoterPortalPage({
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-dvh items-center justify-center px-4 text-center text-sm text-slate-500">
+        <div className="flex min-h-[calc(100dvh-66px)] items-center justify-center px-4 text-center text-sm text-slate-500">
           Loading election portal…
-        </main>
+        </div>
       }
     >
       <VoterPortalContent section={section} />

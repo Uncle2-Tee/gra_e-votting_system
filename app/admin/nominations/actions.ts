@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import {
@@ -47,62 +48,72 @@ export async function reviewNomination(
     return { ...INITIAL_STATE, error: "This review request is invalid. Refresh and try again." };
   }
   const note = typeof reviewNote === "string" ? reviewNote.trim() : "";
-  if (decision === "REJECTED" && (note.length < 5 || note.length > 500)) {
-    return {
-      ...INITIAL_STATE,
-      error: "Enter a rejection reason between 5 and 500 characters.",
-    };
-  }
-  if (decision === "APPROVED" && note.length > 500) {
+  if (note.length > 500) {
     return { ...INITIAL_STATE, error: "The review note must be 500 characters or fewer." };
   }
 
   try {
-    const result = await prisma.$transaction(async (transaction) => {
-      const candidate = await transaction.candidate.findUnique({
-        where: { id: candidateId },
-        select: { id: true, electionId: true, status: true },
-      });
-      if (!candidate || candidate.status !== "PENDING") {
-        return "already-reviewed" as const;
-      }
-
-      const lockedElections = await transaction.$queryRaw<{ status: string }[]>(
-        Prisma.sql`SELECT "status" FROM "Election" WHERE "id" = ${candidate.electionId} FOR UPDATE`,
-      );
-      if (
-        !lockedElections[0] ||
-        !["DRAFT", "SCHEDULED", "PUBLISHED"].includes(lockedElections[0].status)
-      ) {
-        return "closed" as const;
-      }
-
-      const updated = await transaction.candidate.updateMany({
-        where: { id: candidate.id, status: "PENDING" },
-        data: {
-          status: decision,
-          reviewedById: admin.id,
-          reviewedAt: new Date(),
-          reviewNote: note || null,
-        },
-      });
-      if (updated.count !== 1) {
-        return "already-reviewed" as const;
-      }
-
-      await transaction.auditLog.create({
-        data: {
-          actorId: admin.id,
-          action: decision === "APPROVED"
-            ? "CANDIDATE_NOMINATION_APPROVED"
-            : "CANDIDATE_NOMINATION_REJECTED",
-          entityType: "CANDIDATE",
-          entityId: candidate.id,
-          outcome: decision,
-        },
-      });
-      return "reviewed" as const;
-    });
+    const auditId = randomUUID();
+    const resultRows = await prisma.$queryRaw<{
+      result: "already-reviewed" | "closed" | "reviewed";
+    }[]>(Prisma.sql`
+      WITH eligible_candidate AS MATERIALIZED (
+        SELECT candidate."id"
+        FROM "Candidate" AS candidate
+        JOIN "Election" AS election
+          ON election."id" = candidate."electionId"
+        WHERE candidate."id" = ${candidateId}::uuid
+          AND candidate."status" = 'PENDING'
+          AND election."status" IN ('DRAFT', 'SCHEDULED', 'PUBLISHED')
+          AND (election."startsAt" IS NULL OR election."startsAt" > CURRENT_TIMESTAMP)
+          AND (election."endsAt" IS NULL OR election."endsAt" > CURRENT_TIMESTAMP)
+        FOR SHARE OF election
+      ),
+      updated_candidate AS (
+        UPDATE "Candidate" AS candidate
+        SET
+          "status" = ${decision}::"CandidateStatus",
+          "reviewedById" = ${admin.id}::uuid,
+          "reviewedAt" = CURRENT_TIMESTAMP,
+          "reviewNote" = ${note || null},
+          "updatedAt" = CURRENT_TIMESTAMP
+        FROM eligible_candidate
+        WHERE candidate."id" = eligible_candidate."id"
+          AND candidate."status" = 'PENDING'
+        RETURNING candidate."id"
+      ),
+      audit_entry AS (
+        INSERT INTO "AuditLog" (
+          "id",
+          "actorId",
+          "action",
+          "entityType",
+          "entityId",
+          "outcome"
+        )
+        SELECT
+          ${auditId}::uuid,
+          ${admin.id}::uuid,
+          ${decision === "APPROVED" ? "CANDIDATE_NOMINATION_APPROVED" : "CANDIDATE_NOMINATION_REJECTED"},
+          'CANDIDATE',
+          "id"::text,
+          ${decision}
+        FROM updated_candidate
+        RETURNING "id"
+      )
+      SELECT CASE
+        WHEN EXISTS (SELECT 1 FROM updated_candidate) THEN 'reviewed'
+        WHEN EXISTS (
+          SELECT 1
+          FROM "Candidate"
+          WHERE "id" = ${candidateId}::uuid
+            AND "status" = 'PENDING'
+        ) THEN 'closed'
+        ELSE 'already-reviewed'
+      END AS "result",
+      (SELECT COUNT(*) FROM audit_entry) AS "auditCount"
+    `);
+    const result = resultRows[0]?.result;
 
     if (result === "already-reviewed") {
       return {
@@ -115,6 +126,9 @@ export async function reviewNomination(
         ...INITIAL_STATE,
         error: "Applications cannot be reviewed after an election has opened.",
       };
+    }
+    if (result !== "reviewed") {
+      throw new Error("The nomination review query returned no result.");
     }
 
     revalidatePath("/admin");

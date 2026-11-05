@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import Link from "next/link";
 import { FileSpreadsheet, ShieldCheck, X } from "lucide-react";
 import { importEligibleVoters } from "@/app/admin/eligibility/actions";
 import type { EligibilityImportState } from "@/lib/eligibility-import-types";
@@ -99,9 +100,15 @@ export default function AdminEligibilityImport({
             {electionsError}
           </p>
         ) : elections.length === 0 ? (
-          <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-            There are no elections available for importing eligibility. Create an election before it opens.
-          </p>
+          <div className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+            <p>There are no elections available for importing eligibility. Create a draft election first.</p>
+            <Link
+              href="/admin/elections"
+              className="mt-2 inline-flex font-semibold text-emerald-900 underline decoration-emerald-700/40 underline-offset-2 hover:text-emerald-950"
+            >
+              Create an election
+            </Link>
+          </div>
         ) : null}
         {state.error && (
           <p aria-live="polite" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">

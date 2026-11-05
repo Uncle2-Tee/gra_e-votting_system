@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useActionState, useEffect, useState } from "react";
-import { ArrowRight, FilePlus2, ImagePlus, ShieldCheck } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { ArrowRight, FilePlus2, ImagePlus, ShieldCheck, Trash2 } from "lucide-react";
 import { submitNominationApplication } from "@/app/vote/actions";
 import type {
   NominationApplicationState,
@@ -10,9 +10,14 @@ import type {
 } from "@/lib/nomination-types";
 
 const initialState: NominationApplicationState = { error: null, success: false };
+const MAX_PROFILE_PHOTO_SIZE = 2 * 1024 * 1024;
+const PROFILE_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function ProfilePhotoUpload({ disabled }: { disabled: boolean }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!previewUrl) {
@@ -22,51 +27,127 @@ function ProfilePhotoUpload({ disabled }: { disabled: boolean }) {
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
+  function handleFile(file: File | undefined) {
+    setUploadError(null);
+    if (!file) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+
+    if (file.size > MAX_PROFILE_PHOTO_SIZE) {
+      setUploadError("This photo is larger than 2 MB. Choose a smaller image.");
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+    if (file.type && !PROFILE_PHOTO_TYPES.includes(file.type)) {
+      setUploadError("This file type is not supported. Choose a JPEG, PNG, or WebP photo.");
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function removeFile() {
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setUploadError(null);
+  }
+
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 p-4">
-      <div className="flex items-center gap-4">
-        <span className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-slate-400">
-          {previewUrl ? (
-            <Image
-              src={previewUrl}
-              alt="Selected profile photo preview"
-              width={64}
-              height={64}
-              unoptimized
-              className="size-full object-cover"
-            />
-          ) : (
-            <ImagePlus className="size-6" />
-          )}
+    <div className="mt-4">
+      <label
+        htmlFor="nomination-profile-photo"
+        className={`block rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-4 transition ${
+          disabled
+            ? "cursor-not-allowed opacity-60"
+            : "cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50"
+        }`}
+      >
+        <input
+          ref={inputRef}
+          id="nomination-profile-photo"
+          className="peer sr-only"
+          type="file"
+          name="photo"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={disabled}
+          aria-describedby="profile-photo-help"
+          onChange={(event) => handleFile(event.currentTarget.files?.[0])}
+        />
+        <span className="flex items-center gap-3 rounded-lg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-700">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-800 shadow-sm ring-1 ring-slate-200">
+            <ImagePlus className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold text-slate-800">
+              {selectedFile ? "Change profile photo" : "Upload a profile photo"}
+            </span>
+            <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
+              Choose an image from your device
+            </span>
+          </span>
+          <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700">
+            Browse files
+          </span>
         </span>
-        <div className="min-w-0">
-          <label
-            htmlFor="nomination-profile-photo"
-            className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 ${
-              disabled ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            <ImagePlus className="size-3.5" />
-            {previewUrl ? "Choose another photo" : "Upload profile photo"}
-          </label>
-          <input
-            id="nomination-profile-photo"
-            className="sr-only"
-            type="file"
-            name="photo"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={disabled}
-            aria-describedby="profile-photo-help"
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              setPreviewUrl(file ? URL.createObjectURL(file) : null);
-            }}
+      </label>
+
+      <p id="profile-photo-help" className="mt-2 text-[11px] leading-4 text-slate-500">
+        Optional · JPG, PNG, or WebP · maximum 2 MB
+      </p>
+
+      {selectedFile && previewUrl ? (
+        <div aria-live="polite" className="mt-3 flex min-w-0 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+          <Image
+            src={previewUrl}
+            alt="Selected profile photo preview"
+            width={56}
+            height={56}
+            unoptimized
+            className="size-14 shrink-0 rounded-lg object-cover ring-1 ring-emerald-900/10"
           />
-          <p id="profile-photo-help" className="mt-1.5 text-[11px] leading-4 text-slate-500">
-            Optional · JPG, PNG, or WebP · up to 2 MB
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-slate-800" title={selectedFile.name}>
+              {selectedFile.name}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {selectedFile.size < 1024 * 1024
+                ? `${Math.round(selectedFile.size / 1024)} KB`
+                : `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`}{" "}
+              · Ready to upload
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={removeFile}
+            disabled={disabled}
+            aria-label="Remove selected profile photo"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-red-700 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="size-4" />
+          </button>
         </div>
-      </div>
+      ) : null}
+
+      {uploadError ? (
+        <p role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
+          {uploadError}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -88,6 +169,11 @@ export default function NominationApplicationForm({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
       <form
         action={action}
+        aria-describedby={
+          unavailable || positions.length === 0
+            ? "nomination-availability"
+            : undefined
+        }
         className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/[0.03] sm:p-7"
       >
         <div className="flex items-start gap-3">
@@ -104,6 +190,18 @@ export default function NominationApplicationForm({
             </p>
           </div>
         </div>
+
+        {unavailable || positions.length === 0 ? (
+          <p
+            id="nomination-availability"
+            role="status"
+            className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900"
+          >
+            {unavailable
+              ? "Nomination forms are temporarily unavailable because election data could not be loaded."
+              : "The form is disabled because there are no available nomination forms. Check back when an election is scheduled for nominations."}
+          </p>
+        ) : null}
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <label className="text-xs font-medium text-slate-700">
@@ -200,13 +298,6 @@ export default function NominationApplicationForm({
           </span>
         </label>
 
-        {unavailable || positions.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900">
-            {unavailable
-              ? "Nomination forms are temporarily unavailable because election data could not be loaded."
-              : "There are no published nomination forms at the moment. Check back when an election opens for nominations."}
-          </p>
-        ) : null}
         {state.error ? (
           <p
             aria-live="polite"
@@ -245,7 +336,7 @@ export default function NominationApplicationForm({
         </h3>
         <ol className="mt-4 space-y-4">
           {[
-            ["01", "Choose a form", "Select an available position for a published election."],
+            ["01", "Choose a form", "Select an available position for a scheduled election."],
             ["02", "Submit your details", "An administrator will review your statement and contact details."],
             ["03", "Wait for approval", "Only approved nominee profiles are shown in the voter portal."],
           ].map(([number, title, description]) => (

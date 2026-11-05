@@ -8,6 +8,7 @@ import {
   UsersRound,
   Vote,
 } from "lucide-react";
+import AdminElectionCreate from "@/components/admin-election-create";
 import AdminNominationReview from "@/components/admin-nomination-review";
 import type { AdminOverview } from "@/lib/admin-overview";
 import type { PendingNominationData } from "@/lib/nomination-types";
@@ -36,7 +37,7 @@ function PageHeading({
   );
 }
 
-function formatElectionDate(value: string | null) {
+function formatElectionDate(value: string | null, timezone: string) {
   if (!value) {
     return "Not scheduled";
   }
@@ -44,8 +45,8 @@ function formatElectionDate(value: string | null) {
   return `${new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "UTC",
-  }).format(new Date(value))} UTC`;
+    timeZone: timezone,
+  }).format(new Date(value))} ${timezone}`;
 }
 
 function statusStyle(status: string) {
@@ -70,8 +71,9 @@ export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
       <PageHeading
         eyebrow="Election operations"
         title="Elections"
-        description="Review election schedules and current lifecycle status."
+        description="Create elections, review their schedules, and manage voter eligibility."
       />
+      <AdminElectionCreate />
       <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-3">
@@ -97,8 +99,8 @@ export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-800">{election.title}</p>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    {formatElectionDate(election.startsAt)}
-                    {election.endsAt ? ` – ${formatElectionDate(election.endsAt)}` : ""}
+                    Opens {formatElectionDate(election.startsAt, election.timezone)}
+                    {election.endsAt ? ` · Closes ${formatElectionDate(election.endsAt, election.timezone)}` : ""}
                   </p>
                 </div>
                 <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
@@ -146,7 +148,11 @@ export function AdminNominationsPage({
         title="Nomination review"
         description="Review applications, verify nominee details, and record approval decisions."
       />
-      <AdminNominationReview applications={data.applications} error={data.error} />
+      <AdminNominationReview
+        applications={data.applications}
+        approvedApplications={data.approvedApplications}
+        error={data.error}
+      />
     </main>
   );
 }

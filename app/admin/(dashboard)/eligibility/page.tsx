@@ -1,11 +1,15 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import AdminEligibilityImport from "@/components/admin-eligibility-import";
+import { synchronizeElectionStatuses } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 
 async function EligibilityData() {
+  await connection();
   let elections: { id: string; title: string; status: string }[] = [];
   let electionsError: string | null = null;
   try {
+    await synchronizeElectionStatuses();
     elections = await prisma.election.findMany({
       where: { status: { in: ["DRAFT", "SCHEDULED", "PUBLISHED"] } },
       orderBy: [{ startsAt: "asc" }, { title: "asc" }],

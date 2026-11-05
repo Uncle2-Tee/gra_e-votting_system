@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import {
   decryptVoterField,
 } from "@/lib/voter-data-crypto";
+import { synchronizeElectionStatuses } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 import type {
   PendingNominationData,
@@ -14,9 +15,10 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
   await connection();
 
   try {
-    const [positions, candidates] = await prisma.$transaction([
+    await synchronizeElectionStatuses();
+    const [positions, candidates] = await Promise.all([
       prisma.position.findMany({
-        where: { election: { status: "PUBLISHED" } },
+        where: { election: { status: { in: ["SCHEDULED", "PUBLISHED"] } } },
         orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
         select: {
           id: true,
@@ -27,7 +29,7 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
       prisma.candidate.findMany({
         where: {
           status: "APPROVED",
-          election: { status: { in: ["PUBLISHED", "OPEN"] } },
+          election: { status: { in: ["SCHEDULED", "PUBLISHED", "OPEN"] } },
         },
         orderBy: [
           { election: { startsAt: "asc" } },
@@ -75,51 +77,86 @@ export async function getPendingNominationData(): Promise<PendingNominationData>
   await connection();
 
   try {
-    const applications = await prisma.candidate.findMany({
-      where: { status: "PENDING" },
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        nameCiphertext: true,
-        applicantEmailCiphertext: true,
-        applicantPhoneCiphertext: true,
-        biography: true,
-        photoData: true,
-        photoMimeType: true,
-        createdAt: true,
-        election: { select: { title: true } },
-        position: { select: { title: true } },
-      },
-    });
+    const [applications, approvedApplications] = await Promise.all([
+      prisma.candidate.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          nameCiphertext: true,
+          applicantEmailCiphertext: true,
+          applicantPhoneCiphertext: true,
+          biography: true,
+          photoData: true,
+          photoMimeType: true,
+          createdAt: true,
+          election: { select: { title: true } },
+          position: { select: { title: true } },
+        },
+      }),
+      prisma.candidate.findMany({
+        where: { status: "APPROVED" },
+        orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          nameCiphertext: true,
+          applicantEmailCiphertext: true,
+          applicantPhoneCiphertext: true,
+          biography: true,
+          photoData: true,
+          photoMimeType: true,
+          createdAt: true,
+          election: { select: { title: true } },
+          position: { select: { title: true } },
+        },
+      }),
+    ]);
 
     return {
-      applications: applications.map((application) => ({
-        id: application.id,
-        name: decryptVoterField(application.nameCiphertext, "candidate-name"),
-        email: application.applicantEmailCiphertext
-          ? decryptVoterField(application.applicantEmailCiphertext, "nomination-email")
-          : null,
-        phone: application.applicantPhoneCiphertext
-          ? decryptVoterField(application.applicantPhoneCiphertext, "nomination-phone")
-          : null,
-        biography: application.biography,
-        photoUrl:
-          application.photoData && application.photoMimeType === "image/webp"
-            ? `/admin/candidates/${application.id}/photo`
-            : null,
-        electionTitle: application.election.title,
-        positionTitle: application.position.title,
-        submittedAt: application.createdAt.toISOString(),
-      })),
+      applications: applications.map(mapAdminNomination),
+      approvedApplications: approvedApplications.map(mapAdminNomination),
       error: null,
     };
   } catch (error) {
     logNominationDataError("administrator nomination queue", error);
     return {
       applications: [],
+      approvedApplications: [],
       error: "Nomination applications could not be loaded from the database.",
     };
   }
+}
+
+function mapAdminNomination(application: {
+  id: string;
+  nameCiphertext: string;
+  applicantEmailCiphertext: string | null;
+  applicantPhoneCiphertext: string | null;
+  biography: string | null;
+  photoData: Uint8Array<ArrayBufferLike> | null;
+  photoMimeType: string | null;
+  createdAt: Date;
+  election: { title: string };
+  position: { title: string };
+}) {
+  return {
+    id: application.id,
+    name: decryptVoterField(application.nameCiphertext, "candidate-name"),
+    email: application.applicantEmailCiphertext
+      ? decryptVoterField(application.applicantEmailCiphertext, "nomination-email")
+      : null,
+    phone: application.applicantPhoneCiphertext
+      ? decryptVoterField(application.applicantPhoneCiphertext, "nomination-phone")
+      : null,
+    biography: application.biography,
+    photoUrl:
+      application.photoData && application.photoMimeType === "image/webp"
+        ? `/admin/candidates/${application.id}/photo`
+        : null,
+    electionTitle: application.election.title,
+    positionTitle: application.position.title,
+    submittedAt: application.createdAt.toISOString(),
+  };
 }
 
 function logNominationDataError(scope: string, error: unknown) {

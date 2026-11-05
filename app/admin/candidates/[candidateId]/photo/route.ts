@@ -29,15 +29,14 @@ export async function GET(
       return new NextResponse(null, { status: 404 });
     }
 
-    const approvedAndPublished =
+    const approvedForVoterDisplay =
       candidate.status === "APPROVED" &&
-      ["PUBLISHED", "OPEN"].includes(candidate.election.status);
-    if (!approvedAndPublished) {
+      ["SCHEDULED", "PUBLISHED", "OPEN"].includes(candidate.election.status);
+    if (!approvedForVoterDisplay) {
       const admin = await getCurrentAdmin();
       if (
         !admin ||
-        (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") ||
-        candidate.status !== "PENDING"
+        (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN")
       ) {
         return new NextResponse(null, { status: 404 });
       }

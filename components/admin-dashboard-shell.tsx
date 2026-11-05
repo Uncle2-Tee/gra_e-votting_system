@@ -5,12 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BadgeCheck,
-  Bell,
   ChartNoAxesCombined,
   FileSpreadsheet,
   LayoutDashboard,
-  ShieldCheck,
-  UserCog,
+  LogOut,
   UsersRound,
   Vote,
 } from "lucide-react";
@@ -38,10 +36,8 @@ const navigationGroups = [
 ];
 
 export default function AdminDashboardShell({
-  adminName,
   children,
 }: {
-  adminName: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -60,7 +56,7 @@ export default function AdminDashboardShell({
 
   return (
     <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[264px] flex-col border-r border-slate-200/80 bg-white lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y border-r border-emerald-200/80 bg-white shadow-lg shadow-emerald-950/[0.04] lg:flex">
         <Link
           href="/admin"
           className="flex h-[76px] items-center gap-3 border-b border-slate-100 px-6"
@@ -79,7 +75,7 @@ export default function AdminDashboardShell({
           </span>
         </Link>
 
-        <nav aria-label="Administrator navigation" className="flex-1 overflow-y-auto px-3 py-5">
+        <nav aria-label="Administrator navigation" className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
           {navigationGroups.map((group) => (
             <div key={group.label} className="mb-6">
               <p className="px-3 text-[9px] font-semibold tracking-[0.17em] text-slate-400 uppercase">
@@ -113,58 +109,25 @@ export default function AdminDashboardShell({
           ))}
         </nav>
 
-        <div className="border-t border-slate-100 p-4">
-          <div className="rounded-xl border border-emerald-900/10 bg-emerald-50/60 p-3.5">
-            <div className="flex items-center gap-2 text-slate-800">
-              <ShieldCheck className="size-4 text-emerald-700" />
-              <p className="text-[11px] font-semibold">Privacy is foundational</p>
-            </div>
-            <p className="mt-1.5 text-[10px] leading-4 text-slate-500">
-              Ballot secrecy needs independent protocol review before elections can run.
-            </p>
-          </div>
+        <div className="mt-auto border-t border-slate-100 p-4">
+          <form action={signOutAdmin}>
+            <button
+              className="group flex h-10 w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-xs font-semibold text-slate-600 shadow-sm shadow-slate-950/[0.02] transition-colors hover:border-rose-200 hover:bg-rose-50/70 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 active:bg-rose-50"
+              type="submit"
+            >
+              <span className="flex size-7 items-center justify-center rounded-md bg-slate-100 text-slate-500 transition-colors group-hover:bg-white group-hover:text-rose-700">
+                <LogOut className="size-3.5" strokeWidth={1.9} />
+              </span>
+              <span>Sign out</span>
+            </button>
+          </form>
         </div>
       </aside>
 
-      <div className="lg:pl-[264px]">
-        <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
-          <div className="mx-auto flex h-[66px] max-w-[1600px] items-center justify-between gap-4 px-5 sm:px-8">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white lg:hidden">
-                <BrandLogo className="size-full object-contain" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">
-                  System administration
-                </p>
-                <p className="hidden text-[11px] text-slate-500 sm:block">
-                  Central system control
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                disabled
-                aria-label="Notifications unavailable during setup"
-                className="flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-400 disabled:cursor-not-allowed"
-              >
-                <Bell className="size-4" />
-              </button>
-              <div className="hidden items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 sm:flex">
-                <span className="flex size-6 items-center justify-center rounded-md bg-slate-100 text-slate-500">
-                  <UserCog className="size-3.5" />
-                </span>
-                <span className="max-w-36 truncate text-[10px] font-medium text-slate-500">{adminName}</span>
-              </div>
-              <form action={signOutAdmin}>
-                <button className="h-9 rounded-lg border border-slate-200 px-3 text-[10px] font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100" type="submit">
-                  Sign out
-                </button>
-              </form>
-            </div>
-          </div>
-          <nav aria-label="Administrator mobile navigation" className="flex gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden">
+      <div className="lg:pl-[272px]">
+        <div className="border-b border-emerald-100 bg-transparent px-3 py-2 lg:hidden">
+          <div className="flex items-center gap-2">
+            <nav aria-label="Administrator mobile navigation" className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-xl border border-emerald-200/80 bg-white p-1 shadow-sm shadow-emerald-950/[0.03]">
             {navigationGroups.flatMap((group) => group.items).map(({ id, label, href }) => {
               const active = id === activePage;
               return (
@@ -183,8 +146,14 @@ export default function AdminDashboardShell({
                 </Link>
               );
             })}
-          </nav>
-        </header>
+            </nav>
+            <form action={signOutAdmin} className="shrink-0 border-l border-slate-200 pl-2">
+              <button className="h-9 rounded-lg px-2.5 text-[10px] font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-800 active:bg-rose-100" type="submit">
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
         {children}
       </div>
     </div>

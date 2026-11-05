@@ -11,6 +11,10 @@ import {
   getCurrentAdmin,
   isAdminDatabaseUnavailableError,
 } from "@/lib/admin-security";
+import {
+  canAcceptPreElectionChanges,
+  getEffectiveElectionStatus,
+} from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 import {
   EligibilitySpreadsheetError,
@@ -21,8 +25,6 @@ import type { EligibilityImportState } from "@/lib/eligibility-import-types";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const CHUNK_SIZE = 500;
 const INITIAL_STATE: EligibilityImportState = { error: null, result: null };
-
-class ElectionImportClosedError extends Error {}
 
 function chunks<T>(values: T[], size: number) {
   const result: T[][] = [];
@@ -94,15 +96,31 @@ export async function importEligibleVoters(
   const rejectedRows = rows.filter((row) => row.status === "REJECTED").length;
   const skippedRows = rows.filter((row) => row.status === "SKIPPED").length;
   const acceptedVoters = acceptedRows.flatMap((row) => row.voter ? [row.voter] : []);
-  const now = new Date();
 
   try {
-    await prisma.$transaction(async (transaction) => {
-      const lockedElections = await transaction.$queryRaw<{ status: string }[]>(
-        Prisma.sql`SELECT "status" FROM "Election" WHERE "id" = ${election.id} FOR UPDATE`,
+    const importStatus = await prisma.$transaction(async (transaction) => {
+      const lockedElections = await transaction.$queryRaw<{
+        status: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "OPEN" | "CLOSED" | "RESULTS_PUBLISHED" | "ARCHIVED";
+        startsAt: Date | null;
+        endsAt: Date | null;
+      }[]>(
+        Prisma.sql`SELECT "status", "startsAt", "endsAt" FROM "Election" WHERE "id" = ${election.id} FOR UPDATE`,
       );
-      if (!lockedElections[0] || !["DRAFT", "SCHEDULED", "PUBLISHED"].includes(lockedElections[0].status)) {
-        throw new ElectionImportClosedError();
+      const lockedElection = lockedElections[0];
+      const now = new Date();
+      if (!lockedElection) {
+        return "closed" as const;
+      }
+
+      const status = getEffectiveElectionStatus(lockedElection, now);
+      if (status !== lockedElection.status && (status === "OPEN" || status === "CLOSED")) {
+        await transaction.election.update({
+          where: { id: election.id },
+          data: { status },
+        });
+      }
+      if (!canAcceptPreElectionChanges(status)) {
+        return "closed" as const;
       }
 
       const importRecord = await transaction.datasetImport.create({
@@ -212,15 +230,16 @@ export async function importEligibleVoters(
           },
         },
       });
+      return "imported" as const;
     }, { maxWait: 10_000, timeout: 60_000 });
-  } catch (error) {
-    if (error instanceof ElectionImportClosedError) {
+
+    if (importStatus === "closed") {
       return {
         ...INITIAL_STATE,
         error: "This election has opened or closed. Eligibility can no longer be changed.",
       };
     }
-
+  } catch (error) {
     const errorCode =
       error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "UNKNOWN";
     console.error("Eligibility roster import failed.", {
