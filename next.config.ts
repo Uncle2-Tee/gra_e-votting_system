@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    agentFeedback: true,
+    serverActions: {
+      bodySizeLimit: "6mb",
+    },
+  },
   async redirects() {
     return [
       {
@@ -9,9 +15,6 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
     ];
-  },
-  experimental: {
-    agentFeedback: true,
   },
   cacheComponents: true,
   partialPrefetching: true,

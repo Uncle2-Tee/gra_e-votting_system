@@ -1,5 +1,5 @@
-import VotersPortal from "@/components/voters_portal";
+import VoterPortalPage from "@/components/voter-portal-page";
 
 export default function VotePage() {
-  return <VotersPortal />;
+  return <VoterPortalPage section="overview" />;
 }

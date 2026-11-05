@@ -1,0 +1,47 @@
+export type NominationApplicationState = {
+  error: string | null;
+  success: boolean;
+};
+
+export type NominationReviewState = {
+  error: string | null;
+  success: string | null;
+};
+
+export type NominationPositionOption = {
+  id: string;
+  title: string;
+  electionTitle: string;
+};
+
+export type ApprovedNominee = {
+  id: string;
+  name: string;
+  biography: string | null;
+  photoUrl: string | null;
+  positionTitle: string;
+  electionTitle: string;
+};
+
+export type VoterPortalData = {
+  databaseStatus: "connected" | "unavailable";
+  positions: NominationPositionOption[];
+  nominees: ApprovedNominee[];
+};
+
+export type PendingNomination = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  biography: string | null;
+  photoUrl: string | null;
+  electionTitle: string;
+  positionTitle: string;
+  submittedAt: string;
+};
+
+export type PendingNominationData = {
+  applications: PendingNomination[];
+  error: string | null;
+};

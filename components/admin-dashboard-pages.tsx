@@ -1,0 +1,213 @@
+import Link from "next/link";
+import {
+  CalendarDays,
+  Check,
+  ClipboardList,
+  FileSpreadsheet,
+  Fingerprint,
+  UsersRound,
+  Vote,
+} from "lucide-react";
+import AdminNominationReview from "@/components/admin-nomination-review";
+import type { AdminOverview } from "@/lib/admin-overview";
+import type { PendingNominationData } from "@/lib/nomination-types";
+
+function PageHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="mb-6">
+      <p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-700 uppercase">
+        {eyebrow}
+      </p>
+      <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950">
+        {title}
+      </h1>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function formatElectionDate(value: string | null) {
+  if (!value) {
+    return "Not scheduled";
+  }
+
+  return `${new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(value))} UTC`;
+}
+
+function statusStyle(status: string) {
+  switch (status) {
+    case "OPEN":
+      return "bg-emerald-50 text-emerald-800";
+    case "SCHEDULED":
+      return "bg-blue-50 text-blue-700";
+    case "CLOSED":
+    case "RESULTS_PUBLISHED":
+      return "bg-slate-100 text-slate-700";
+    case "SUSPENDED":
+      return "bg-red-50 text-red-700";
+    default:
+      return "bg-amber-50 text-amber-800";
+  }
+}
+
+export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
+  return (
+    <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
+      <PageHeading
+        eyebrow="Election operations"
+        title="Elections"
+        description="Review election schedules and current lifecycle status."
+      />
+      <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
+              <Vote className="size-[17px]" strokeWidth={1.8} />
+            </span>
+            <div>
+              <p className="text-xs font-semibold text-slate-900">Election schedule</p>
+              <p className="mt-0.5 text-[10px] text-slate-500">
+                {overview.elections.length} recently updated {overview.elections.length === 1 ? "election" : "elections"}
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-600">
+            <CalendarDays className="size-3.5" />
+            Schedule overview
+          </span>
+        </div>
+        {overview.elections.length > 0 ? (
+          <ul className="divide-y divide-slate-100">
+            {overview.elections.map((election) => (
+              <li key={election.id} className="flex min-w-0 flex-col gap-2 px-4 py-4 transition-colors hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">{election.title}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {formatElectionDate(election.startsAt)}
+                    {election.endsAt ? ` – ${formatElectionDate(election.endsAt)}` : ""}
+                  </p>
+                </div>
+                <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
+                  {election.status.replaceAll("_", " ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex min-h-40 flex-col items-center justify-center px-6 py-8 text-center">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">
+              <ClipboardList className="size-[18px]" />
+            </span>
+            <h2 className="mt-3 text-sm font-semibold text-slate-800">
+              {overview.databaseStatus === "connected"
+                ? "No elections have been created"
+                : "Election data is unavailable"}
+            </h2>
+            <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
+              {overview.databaseStatus === "connected"
+                ? "Elections will appear here once they have been created."
+                : "Election schedules and statuses could not be loaded from the database."}
+            </p>
+          </div>
+        )}
+        <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:px-6">
+          <p className="text-[10px] text-slate-500">
+            Showing the {overview.elections.length} most recently updated election(s).
+          </p>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export function AdminNominationsPage({
+  data,
+}: {
+  data: PendingNominationData;
+}) {
+  return (
+    <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
+      <PageHeading
+        eyebrow="Election operations"
+        title="Nomination review"
+        description="Review applications, verify nominee details, and record approval decisions."
+      />
+      <AdminNominationReview applications={data.applications} error={data.error} />
+    </main>
+  );
+}
+
+export function AdminVotersPage({ overview }: { overview: AdminOverview }) {
+  const metrics = [
+    {
+      label: "Registered voters",
+      value: overview.stats?.registeredVoters,
+      icon: UsersRound,
+      description: "Voter accounts recorded in the system",
+    },
+    {
+      label: "Eligible voter records",
+      value: overview.stats?.eligibleVoters,
+      icon: Fingerprint,
+      description: "Election-specific eligible assignments",
+    },
+  ];
+
+  return (
+    <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
+      <PageHeading
+        eyebrow="Voter management"
+        title="Voter registry"
+        description="Review voter registration totals and manage election eligibility records."
+      />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {metrics.map(({ label, value, icon: Icon, description }) => (
+            <article key={label} className="rounded-xl border border-slate-200/80 bg-white p-5 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
+                <Icon className="size-[17px]" strokeWidth={1.8} />
+              </span>
+              <p className={`mt-4 text-2xl font-semibold tracking-tight ${value === undefined ? "text-red-700" : "text-slate-950"}`}>
+                {value ?? "Unavailable"}
+              </p>
+              <h2 className="mt-1 text-xs font-semibold text-slate-800">{label}</h2>
+              <p className="mt-1 text-[10px] leading-4 text-slate-500">{description}</p>
+            </article>
+          ))}
+        </div>
+        <article className="flex flex-col items-start justify-between gap-5 rounded-xl border border-emerald-900/10 bg-emerald-50/50 p-5 sm:flex-row sm:items-center lg:flex-col lg:items-start">
+          <div>
+            <span className="flex size-9 items-center justify-center rounded-lg bg-white text-emerald-800 ring-1 ring-emerald-900/10">
+              <FileSpreadsheet className="size-[17px]" strokeWidth={1.8} />
+            </span>
+            <h2 className="mt-3 text-sm font-semibold text-slate-900">Manage voter eligibility</h2>
+            <p className="mt-1 max-w-md text-xs leading-5 text-slate-600">
+              Import a voter roster and assign eligible voters to an election.
+            </p>
+          </div>
+          <Link
+            href="/admin/eligibility"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-800 px-3.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-900"
+          >
+            <Check className="size-3.5" />
+            Manage eligibility
+          </Link>
+        </article>
+      </div>
+    </main>
+  );
+}

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GRA E-Voting Management System",
+  title: "GRA E-Voting | Ghana Revenue Authority",
   description:
     "Secure election management for registered and eligible voters.",
 };

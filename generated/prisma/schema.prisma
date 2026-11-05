@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ELECTION_ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum ElectionStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  OPEN
+  CLOSED
+  RESULTS_PUBLISHED
+  ARCHIVED
+}
+
+enum EligibilityStatus {
+  ELIGIBLE
+  SUSPENDED
+}
+
+enum CandidateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  INACTIVE
+}
+
+enum ImportStatus {
+  PENDING
+  VALIDATING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+}
+
+enum ImportRecordStatus {
+  ACCEPTED
+  REJECTED
+  SKIPPED
+}
+
+enum CredentialIssuanceStatus {
+  ISSUED
+  REVOKED
+  EXPIRED
+}
+
+// ==========================================
+// ADMINISTRATOR USERS
+// ==========================================
+
+model User {
+  id              String        @id @default(uuid()) @db.Uuid
+  nameCiphertext  String
+  emailCiphertext String
+  emailLookupHash String        @unique
+  passwordHash    String
+  role            UserRole
+  status          AccountStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  electionsCreated Election[]      @relation("ElectionCreator")
+  importsCreated   DatasetImport[]
+  sessions         AdminSession[]
+  auditEvents      AuditLog[]      @relation("AuditActor")
+
+  @@index([role, status])
+}
+
+// ==========================================
+// REGISTERED VOTERS / EMPLOYEES
+// ==========================================
+
+model Voter {
+  id                       String        @id @default(uuid()) @db.Uuid
+  identificationCiphertext String
+  identificationLookupHash String        @unique
+  nameCiphertext           String
+  emailCiphertext          String?
+  phoneCiphertext          String?
+  departmentCiphertext     String?
+  status                   AccountStatus @default(ACTIVE)
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  eligibilities ElectionVoter[]
+  verifications VoterVerification[]
+}
+
+// ==========================================
+// VOTER IDENTITY VERIFICATION
+// ==========================================
+
+model VoterVerification {
+  id            String    @id @default(uuid()) @db.Uuid
+  voterId       String    @db.Uuid
+  challengeHash String    @unique
+  expiresAt     DateTime
+  attemptCount  Int       @default(0)
+  resendCount   Int       @default(0)
+  lastSentAt    DateTime?
+  consumedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  voter Voter @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@index([voterId, expiresAt])
+}
+
+// ==========================================
+// ELECTIONS
+// ==========================================
+
+model Election {
+  id                 String         @id @default(uuid()) @db.Uuid
+  title              String
+  description        String?
+  status             ElectionStatus @default(DRAFT)
+  startsAt           DateTime?
+  endsAt             DateTime?
+  timezone           String
+  resultsPublishedAt DateTime?
+  createdById        String         @db.Uuid
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  createdBy        User              @relation("ElectionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  positions        Position[]
+  candidates       Candidate[]
+  eligibleVoters   ElectionVoter[]
+  ballots          Ballot[]
+  ballotSelections BallotSelection[]
+  imports          DatasetImport[]
+
+  @@index([status, startsAt, endsAt])
+}
+
+// ==========================================
+// ELECTION VOTER ELIGIBILITY
+// ==========================================
+
+model ElectionVoter {
+  id         String            @id @default(uuid()) @db.Uuid
+  electionId String            @db.Uuid
+  voterId    String            @db.Uuid
+  status     EligibilityStatus @default(ELIGIBLE)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  election           Election            @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  voter              Voter               @relation(fields: [voterId], references: [id], onDelete: Restrict)
+  credentialIssuance CredentialIssuance?
+  participation      VoteParticipation?
+
+  @@unique([electionId, voterId])
+  @@index([voterId, status])
+}
+
+// ==========================================
+// ANONYMOUS CREDENTIAL ISSUANCE RECORD
+// ==========================================
+
+model CredentialIssuance {
+  id              String                   @id @default(uuid()) @db.Uuid
+  electionVoterId String                   @unique @db.Uuid
+  status          CredentialIssuanceStatus @default(ISSUED)
+  issuedAt        DateTime                 @default(now())
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+
+  electionVoter ElectionVoter @relation(fields: [electionVoterId], references: [id], onDelete: Restrict)
+}
+
+// ==========================================
+// VOTER PARTICIPATION TRACKING
+// ==========================================
+
+model VoteParticipation {
+  id              String   @id @default(uuid()) @db.Uuid
+  electionVoterId String   @unique @db.Uuid
+  recordedAt      DateTime @default(now())
+
+  electionVoter ElectionVoter @relation(fields: [electionVoterId], references: [id], onDelete: Restrict)
+}
+
+// ==========================================
+// ELECTION POSITIONS
+// ==========================================
+
+model Position {
+  id            String   @id @default(uuid()) @db.Uuid
+  electionId    String   @db.Uuid
+  title         String
+  description   String?
+  displayOrder  Int      @default(0)
+  minSelections Int      @default(1)
+  maxSelections Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  election         Election          @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  candidates       Candidate[]
+  ballotSelections BallotSelection[]
+
+  @@unique([id, electionId])
+  @@index([electionId, displayOrder])
+}
+
+// ==========================================
+// ELECTION CANDIDATES
+// ==========================================
+
+model Candidate {
+  id             String          @id @default(uuid()) @db.Uuid
+  electionId     String          @db.Uuid
+  positionId     String          @db.Uuid
+  nameCiphertext String
+  biography      String?
+  photoUrl       String?
+  status         CandidateStatus @default(PENDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  election         Election          @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  position         Position          @relation(fields: [positionId, electionId], references: [id, electionId], onDelete: Restrict)
+  ballotSelections BallotSelection[]
+
+  @@unique([id, positionId, electionId])
+  @@index([electionId, positionId, status])
+}
+
+// ==========================================
+// ANONYMOUS BALLOTS
+// ==========================================
+
+model Ballot {
+  id                        String   @id @default(uuid()) @db.Uuid
+  electionId                String   @db.Uuid
+  anonymousCredentialDigest String
+  acceptedAt                DateTime @default(now())
+
+  election   Election          @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  selections BallotSelection[]
+
+  @@unique([electionId, anonymousCredentialDigest])
+  @@unique([id, electionId])
+  @@index([electionId, acceptedAt])
+}
+
+// ==========================================
+// BALLOT SELECTIONS
+// ==========================================
+
+model BallotSelection {
+  id          String @id @default(uuid()) @db.Uuid
+  ballotId    String @db.Uuid
+  electionId  String @db.Uuid
+  positionId  String @db.Uuid
+  candidateId String @db.Uuid
+
+  ballot    Ballot    @relation(fields: [ballotId, electionId], references: [id, electionId], onDelete: Cascade)
+  election  Election  @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  position  Position  @relation(fields: [positionId, electionId], references: [id, electionId], onDelete: Restrict)
+  candidate Candidate @relation(fields: [candidateId, positionId, electionId], references: [id, positionId, electionId], onDelete: Restrict)
+
+  @@unique([ballotId, positionId, candidateId])
+  @@index([electionId, positionId])
+}
+
+// ==========================================
+// EXCEL DATASET IMPORTS
+// ==========================================
+
+model DatasetImport {
+  id           String       @id @default(uuid()) @db.Uuid
+  electionId   String?      @db.Uuid
+  importedById String?      @db.Uuid
+  filename     String
+  status       ImportStatus @default(PENDING)
+  totalRows    Int          @default(0)
+  acceptedRows Int          @default(0)
+  rejectedRows Int          @default(0)
+  createdAt    DateTime     @default(now())
+  completedAt  DateTime?
+
+  election   Election?             @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  importedBy User?                 @relation(fields: [importedById], references: [id], onDelete: Restrict)
+  records    DatasetImportRecord[]
+
+  @@index([createdAt, status])
+}
+
+// ==========================================
+// EXCEL DATASET IMPORT RECORDS
+// ==========================================
+
+model DatasetImportRecord {
+  id         String             @id @default(uuid()) @db.Uuid
+  importId   String             @db.Uuid
+  rowNumber  Int
+  status     ImportRecordStatus
+  errorCodes Json?
+  createdAt  DateTime           @default(now())
+
+  import DatasetImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([importId, rowNumber])
+}
+
+// ==========================================
+// ADMINISTRATOR SESSIONS
+// ==========================================
+
+model AdminSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+// ==========================================
+// SECURITY AND AUDIT LOGS
+// ==========================================
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  outcome    String
+  requestId  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+}
