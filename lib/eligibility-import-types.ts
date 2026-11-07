@@ -17,5 +17,6 @@ export type EligibilityImportState = {
     acceptedRows: number;
     rejectedRows: number;
     skippedRows: number;
+    electionsUpdated: number;
   } | null;
 };

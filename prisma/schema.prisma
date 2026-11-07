@@ -59,12 +59,6 @@ enum ImportRecordStatus {
   SKIPPED
 }
 
-enum CredentialIssuanceStatus {
-  ISSUED
-  REVOKED
-  EXPIRED
-}
-
 // ==========================================
 // ADMINISTRATOR USERS
 // ==========================================
@@ -106,27 +100,6 @@ model Voter {
   updatedAt                DateTime      @updatedAt
 
   eligibilities ElectionVoter[]
-  verifications VoterVerification[]
-}
-
-// ==========================================
-// VOTER IDENTITY VERIFICATION
-// ==========================================
-
-model VoterVerification {
-  id            String    @id @default(uuid()) @db.Uuid
-  voterId       String    @db.Uuid
-  challengeHash String    @unique
-  expiresAt     DateTime
-  attemptCount  Int       @default(0)
-  resendCount   Int       @default(0)
-  lastSentAt    DateTime?
-  consumedAt    DateTime?
-  createdAt     DateTime  @default(now())
-
-  voter Voter @relation(fields: [voterId], references: [id], onDelete: Cascade)
-
-  @@index([voterId, expiresAt])
 }
 
 // ==========================================
@@ -171,26 +144,10 @@ model ElectionVoter {
 
   election           Election            @relation(fields: [electionId], references: [id], onDelete: Restrict)
   voter              Voter               @relation(fields: [voterId], references: [id], onDelete: Restrict)
-  credentialIssuance CredentialIssuance?
   participation      VoteParticipation?
 
   @@unique([electionId, voterId])
   @@index([voterId, status])
-}
-
-// ==========================================
-// ANONYMOUS CREDENTIAL ISSUANCE RECORD
-// ==========================================
-
-model CredentialIssuance {
-  id              String                   @id @default(uuid()) @db.Uuid
-  electionVoterId String                   @unique @db.Uuid
-  status          CredentialIssuanceStatus @default(ISSUED)
-  issuedAt        DateTime                 @default(now())
-  expiresAt       DateTime?
-  revokedAt       DateTime?
-
-  electionVoter ElectionVoter @relation(fields: [electionVoterId], references: [id], onDelete: Restrict)
 }
 
 // ==========================================
@@ -252,7 +209,7 @@ model Candidate {
   updatedAt                DateTime        @updatedAt
 
   election         Election          @relation(fields: [electionId], references: [id], onDelete: Restrict)
-  position         Position          @relation(fields: [positionId, electionId], references: [id, electionId], onDelete: Restrict)
+  position         Position          @relation(fields: [positionId, electionId], references: [id, electionId], onDelete: Cascade)
   reviewedBy       User?             @relation("CandidateReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
   ballotSelections BallotSelection[]
 

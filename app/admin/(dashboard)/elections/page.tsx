@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { AdminElectionsPage } from "@/components/admin-dashboard-pages";
-import { getAdminOverview } from "@/lib/admin-overview";
+import { getAdminElectionSchedules } from "@/lib/admin-overview";
 
 async function ElectionData() {
-  const overview = await getAdminOverview();
-  return <AdminElectionsPage overview={overview} />;
+  const schedules = await getAdminElectionSchedules();
+  return <AdminElectionsPage schedules={schedules} />;
 }
 
 export default function AdminElectionsRoute() {

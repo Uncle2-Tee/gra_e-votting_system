@@ -11,6 +11,7 @@
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
     "db:seed:test": "node prisma/seed-test-data.mjs",
+    "db:seed:demo-voting": "node prisma/seed-demo-voting.mjs",
     "db:delete:test": "node prisma/delete-test-data.mjs"
   },
   "dependencies": {

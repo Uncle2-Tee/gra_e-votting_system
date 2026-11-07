@@ -198,8 +198,8 @@ export default function NominationApplicationForm({
             className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900"
           >
             {unavailable
-              ? "Nomination forms are temporarily unavailable because election data could not be loaded."
-              : "The form is disabled because there are no available nomination forms. Check back when an election is scheduled for nominations."}
+              ? "Available positions are temporarily unavailable because election data could not be loaded."
+              : "No nomination positions have been configured yet. Contact the administrator to add positions."}
           </p>
         ) : null}
 
@@ -218,7 +218,7 @@ export default function NominationApplicationForm({
             />
           </label>
           <label className="text-xs font-medium text-slate-700">
-            Position and election
+            Position
             <select
               className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 disabled:bg-slate-50"
               name="positionId"
@@ -227,14 +227,25 @@ export default function NominationApplicationForm({
               disabled={disabled}
             >
               <option value="" disabled>
-                Select a nomination form
+                Select a position
               </option>
-              {positions.map((position) => (
-                <option key={position.id} value={position.id}>
-                  {position.title} · {position.electionTitle}
-                </option>
-              ))}
+              {[...new Set(positions.map((position) => position.electionTitle))].map(
+                (electionTitle) => (
+                  <optgroup key={electionTitle} label={electionTitle}>
+                    {positions
+                      .filter((position) => position.electionTitle === electionTitle)
+                      .map((position) => (
+                        <option key={position.id} value={position.id}>
+                          {position.title}
+                        </option>
+                      ))}
+                  </optgroup>
+                ),
+              )}
             </select>
+            <span className="mt-1.5 block text-[11px] leading-4 text-slate-500">
+              Available positions are grouped by election.
+            </span>
           </label>
           <label className="text-xs font-medium text-slate-700">
             Email address

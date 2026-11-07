@@ -219,7 +219,6 @@ export async function getCurrentAdmin() {
 
   const credentials = getAdminLoginCredentials();
   if (!isAdminSecurityConfigured() || !credentials) {
-    cookieStore.delete(SESSION_COOKIE);
     return null;
   }
 
@@ -256,7 +255,6 @@ export async function getCurrentAdmin() {
           data: { revokedAt: new Date() },
         });
       }
-      cookieStore.delete(SESSION_COOKIE);
       return null;
     }
 

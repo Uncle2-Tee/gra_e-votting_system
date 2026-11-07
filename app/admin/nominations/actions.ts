@@ -55,7 +55,7 @@ export async function reviewNomination(
   try {
     const auditId = randomUUID();
     const resultRows = await prisma.$queryRaw<{
-      result: "already-reviewed" | "closed" | "reviewed";
+      result: "already-reviewed" | "unavailable" | "reviewed";
     }[]>(Prisma.sql`
       WITH eligible_candidate AS MATERIALIZED (
         SELECT candidate."id"
@@ -64,9 +64,6 @@ export async function reviewNomination(
           ON election."id" = candidate."electionId"
         WHERE candidate."id" = ${candidateId}::uuid
           AND candidate."status" = 'PENDING'
-          AND election."status" IN ('DRAFT', 'SCHEDULED', 'PUBLISHED')
-          AND (election."startsAt" IS NULL OR election."startsAt" > CURRENT_TIMESTAMP)
-          AND (election."endsAt" IS NULL OR election."endsAt" > CURRENT_TIMESTAMP)
         FOR SHARE OF election
       ),
       updated_candidate AS (
@@ -108,7 +105,7 @@ export async function reviewNomination(
           FROM "Candidate"
           WHERE "id" = ${candidateId}::uuid
             AND "status" = 'PENDING'
-        ) THEN 'closed'
+        ) THEN 'unavailable'
         ELSE 'already-reviewed'
       END AS "result",
       (SELECT COUNT(*) FROM audit_entry) AS "auditCount"
@@ -121,10 +118,10 @@ export async function reviewNomination(
         error: "This application has already been reviewed. Refresh the queue.",
       };
     }
-    if (result === "closed") {
+    if (result === "unavailable") {
       return {
         ...INITIAL_STATE,
-        error: "Applications cannot be reviewed after an election has opened.",
+        error: "This application is no longer available for review.",
       };
     }
     if (result !== "reviewed") {

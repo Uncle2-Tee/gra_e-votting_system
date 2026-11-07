@@ -155,7 +155,7 @@ function NominationCard({ application }: { application: PendingNomination }) {
 
 function ApprovedNominationCard({ application }: { application: PendingNomination }) {
   return (
-    <article className="flex h-fit w-fit min-w-0 max-w-full items-start gap-3 rounded-xl border border-emerald-100 bg-white p-3.5 shadow-sm shadow-slate-950/[0.02] sm:max-w-xl">
+    <article className="flex h-fit w-full min-w-0 max-w-full items-start gap-3 rounded-xl border border-emerald-100 bg-white p-3.5 shadow-sm shadow-slate-950/[0.02] sm:w-fit sm:max-w-xl">
       {application.photoUrl ? (
         <Image
           src={application.photoUrl}

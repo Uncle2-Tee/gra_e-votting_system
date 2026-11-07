@@ -29,6 +29,27 @@ export type VoterPortalData = {
   nominees: ApprovedNominee[];
 };
 
+export type VoterResultsData = {
+  databaseStatus: "connected" | "unavailable";
+  elections: {
+    id: string;
+    title: string;
+    resultsAvailableAt: string | null;
+    timezone: string;
+    ballotsCast: number;
+    positions: {
+      id: string;
+      title: string;
+      candidates: {
+        id: string;
+        name: string;
+        votes: number;
+        percentage: number;
+      }[];
+    }[];
+  }[];
+};
+
 export type PendingNomination = {
   id: string;
   name: string;

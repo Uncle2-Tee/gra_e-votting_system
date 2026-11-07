@@ -1,6 +1,7 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type ElectionStatus } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   encryptVoterField,
@@ -11,10 +12,7 @@ import {
   getCurrentAdmin,
   isAdminDatabaseUnavailableError,
 } from "@/lib/admin-security";
-import {
-  canAcceptPreElectionChanges,
-  getEffectiveElectionStatus,
-} from "@/lib/election-schedule";
+import { getEffectiveElectionStatus } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 import {
   EligibilitySpreadsheetError,
@@ -58,24 +56,12 @@ export async function importEligibleVoters(
     return { ...INITIAL_STATE, error: "You are not authorized to import voter eligibility." };
   }
 
-  const electionId = formData.get("electionId");
   const file = formData.get("file");
-  if (typeof electionId !== "string" || !(file instanceof File)) {
-    return { ...INITIAL_STATE, error: "Select an election and an .xlsx file." };
+  if (!(file instanceof File)) {
+    return { ...INITIAL_STATE, error: "Select an .xlsx file." };
   }
   if (!file.name.toLocaleLowerCase("en").endsWith(".xlsx") || file.size === 0 || file.size > MAX_FILE_SIZE) {
     return { ...INITIAL_STATE, error: "Upload a non-empty .xlsx file no larger than 5 MB." };
-  }
-
-  const election = await prisma.election.findUnique({
-    where: { id: electionId },
-    select: { id: true, status: true },
-  });
-  if (!election || !["DRAFT", "SCHEDULED", "PUBLISHED"].includes(election.status)) {
-    return {
-      ...INITIAL_STATE,
-      error: "Eligibility can only be imported for an election that has not opened.",
-    };
   }
 
   let rows;
@@ -98,36 +84,40 @@ export async function importEligibleVoters(
   const acceptedVoters = acceptedRows.flatMap((row) => row.voter ? [row.voter] : []);
 
   try {
-    const importStatus = await prisma.$transaction(async (transaction) => {
-      const lockedElections = await transaction.$queryRaw<{
-        status: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "OPEN" | "CLOSED" | "RESULTS_PUBLISHED" | "ARCHIVED";
+    const electionsUpdated = await prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`
+        SELECT pg_advisory_xact_lock(604218731)::text AS lock_result
+      `;
+      const elections = await transaction.$queryRaw<{
+        id: string;
+        status: ElectionStatus;
         startsAt: Date | null;
         endsAt: Date | null;
-      }[]>(
-        Prisma.sql`SELECT "status", "startsAt", "endsAt" FROM "Election" WHERE "id" = ${election.id} FOR UPDATE`,
-      );
-      const lockedElection = lockedElections[0];
+      }[]>`
+        SELECT "id", "status", "startsAt", "endsAt"
+        FROM "Election"
+        ORDER BY "id"
+        FOR UPDATE
+      `;
       const now = new Date();
-      if (!lockedElection) {
-        return "closed" as const;
-      }
-
-      const status = getEffectiveElectionStatus(lockedElection, now);
-      if (status !== lockedElection.status && (status === "OPEN" || status === "CLOSED")) {
-        await transaction.election.update({
-          where: { id: election.id },
-          data: { status },
-        });
-      }
-      if (!canAcceptPreElectionChanges(status)) {
-        return "closed" as const;
+      const eligibleElectionIds: string[] = [];
+      for (const election of elections) {
+        const status = getEffectiveElectionStatus(election, now);
+        if (status !== election.status) {
+          await transaction.election.update({
+            where: { id: election.id },
+            data: { status },
+          });
+        }
+        if (["DRAFT", "SCHEDULED", "PUBLISHED", "OPEN"].includes(status)) {
+          eligibleElectionIds.push(election.id);
+        }
       }
 
       const importRecord = await transaction.datasetImport.create({
         data: {
-          electionId: election.id,
           importedById: admin.id,
-          filename: "eligibility-roster.xlsx",
+          filename: "voter-registry-roster.xlsx",
           status: "VALIDATING",
           totalRows: rows.length,
         },
@@ -173,27 +163,29 @@ export async function importEligibleVoters(
         }
       }
 
-      const electionVoterIds = acceptedVoters.flatMap((voter) => {
+      const voterIds = acceptedVoters.flatMap((voter) => {
         const voterId = votersByLookupHash.get(voter.lookupHash);
         return voterId ? [voterId] : [];
       });
-      for (const batch of chunks(electionVoterIds, CHUNK_SIZE)) {
-        await transaction.electionVoter.createMany({
-          data: batch.map((voterId) => ({
-            electionId: election.id,
-            voterId,
-            status: "ELIGIBLE",
-          })),
-          skipDuplicates: true,
-        });
-        await transaction.electionVoter.updateMany({
-          where: {
-            electionId: election.id,
-            voterId: { in: batch },
-            status: "SUSPENDED",
-          },
-          data: { status: "ELIGIBLE" },
-        });
+      for (const electionId of eligibleElectionIds) {
+        for (const batch of chunks(voterIds, CHUNK_SIZE)) {
+          await transaction.electionVoter.createMany({
+            data: batch.map((voterId) => ({
+              electionId,
+              voterId,
+              status: "ELIGIBLE",
+            })),
+            skipDuplicates: true,
+          });
+          await transaction.electionVoter.updateMany({
+            where: {
+              electionId,
+              voterId: { in: batch },
+              status: "SUSPENDED",
+            },
+            data: { status: "ELIGIBLE" },
+          });
+        }
       }
 
       await transaction.datasetImportRecord.createMany({
@@ -223,22 +215,28 @@ export async function importEligibleVoters(
           entityId: importRecord.id,
           outcome: rejectedRows > 0 ? "COMPLETED_WITH_ERRORS" : "SUCCESS",
           metadata: {
-            electionId: election.id,
+            eligibilityScope: "ALL_CURRENT_AND_FUTURE_ELECTIONS",
             acceptedRows: acceptedRows.length,
             rejectedRows,
             skippedRows,
+            electionsUpdated: eligibleElectionIds.length,
           },
         },
       });
-      return "imported" as const;
+      return eligibleElectionIds.length;
     }, { maxWait: 10_000, timeout: 60_000 });
-
-    if (importStatus === "closed") {
-      return {
-        ...INITIAL_STATE,
-        error: "This election has opened or closed. Eligibility can no longer be changed.",
-      };
-    }
+    revalidatePath("/admin");
+    revalidatePath("/admin/voters");
+    revalidatePath("/admin/eligibility");
+    return {
+      error: null,
+      result: {
+        acceptedRows: acceptedRows.length,
+        rejectedRows,
+        skippedRows,
+        electionsUpdated,
+      },
+    };
   } catch (error) {
     const errorCode =
       error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "UNKNOWN";
@@ -252,12 +250,4 @@ export async function importEligibleVoters(
     };
   }
 
-  return {
-    error: null,
-    result: {
-      acceptedRows: acceptedRows.length,
-      rejectedRows,
-      skippedRows,
-    },
-  };
 }

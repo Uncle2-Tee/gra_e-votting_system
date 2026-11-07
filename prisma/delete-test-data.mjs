@@ -4,7 +4,10 @@ import { PrismaClient } from "@prisma/client";
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
 
-const electionTitle = "[TEST DATA] GRA E-Voting Nomination Demo";
+const electionTitles = [
+  "[TEST DATA] GRA E-Voting Nomination Demo",
+  "[TEST DATA] GRA E-Voting Ballot Demo",
+];
 
 function getTestDatabaseUrl() {
   if (process.env.NODE_ENV === "production") {
@@ -25,61 +28,63 @@ const prisma = new PrismaClient({
 });
 
 try {
-  const election = await prisma.election.findFirst({
-    where: { title: electionTitle },
-    select: { id: true },
+  const elections = await prisma.election.findMany({
+    where: { title: { in: electionTitles } },
+    select: { id: true, title: true },
   });
-  if (!election) {
-    console.log(`No test election named "${electionTitle}" was found.`);
+  if (elections.length === 0) {
+    console.log("No test elections were found.");
   } else {
     await prisma.$transaction(async (transaction) => {
-      const imports = await transaction.datasetImport.findMany({
-        where: { electionId: election.id },
-        select: { id: true },
-      });
-      const importIds = imports.map(({ id }) => id);
-      if (importIds.length > 0) {
-        await transaction.datasetImportRecord.deleteMany({
-          where: { importId: { in: importIds } },
+      for (const election of elections) {
+        const imports = await transaction.datasetImport.findMany({
+          where: { electionId: election.id },
+          select: { id: true },
         });
-      }
-      await transaction.ballotSelection.deleteMany({
-        where: { electionId: election.id },
-      });
-      await transaction.candidate.deleteMany({
-        where: { electionId: election.id },
-      });
-      await transaction.ballot.deleteMany({
-        where: { electionId: election.id },
-      });
+        const importIds = imports.map(({ id }) => id);
+        if (importIds.length > 0) {
+          await transaction.datasetImportRecord.deleteMany({
+            where: { importId: { in: importIds } },
+          });
+        }
+        await transaction.ballotSelection.deleteMany({
+          where: { electionId: election.id },
+        });
+        await transaction.candidate.deleteMany({
+          where: { electionId: election.id },
+        });
+        await transaction.ballot.deleteMany({
+          where: { electionId: election.id },
+        });
 
-      const eligibility = await transaction.electionVoter.findMany({
-        where: { electionId: election.id },
-        select: { id: true },
-      });
-      const eligibilityIds = eligibility.map(({ id }) => id);
-      if (eligibilityIds.length > 0) {
-        await transaction.credentialIssuance.deleteMany({
-          where: { electionVoterId: { in: eligibilityIds } },
+        const eligibility = await transaction.electionVoter.findMany({
+          where: { electionId: election.id },
+          select: { id: true },
         });
-        await transaction.voteParticipation.deleteMany({
-          where: { electionVoterId: { in: eligibilityIds } },
+        const eligibilityIds = eligibility.map(({ id }) => id);
+        if (eligibilityIds.length > 0) {
+          await transaction.demoBallotCredential.deleteMany({
+            where: { electionVoterId: { in: eligibilityIds } },
+          });
+          await transaction.voteParticipation.deleteMany({
+            where: { electionVoterId: { in: eligibilityIds } },
+          });
+        }
+        await transaction.electionVoter.deleteMany({
+          where: { electionId: election.id },
+        });
+        await transaction.datasetImport.deleteMany({
+          where: { electionId: election.id },
+        });
+        await transaction.position.deleteMany({
+          where: { electionId: election.id },
+        });
+        await transaction.election.delete({
+          where: { id: election.id },
         });
       }
-      await transaction.electionVoter.deleteMany({
-        where: { electionId: election.id },
-      });
-      await transaction.datasetImport.deleteMany({
-        where: { electionId: election.id },
-      });
-      await transaction.position.deleteMany({
-        where: { electionId: election.id },
-      });
-      await transaction.election.delete({
-        where: { id: election.id },
-      });
     });
-    console.log(`Deleted "${electionTitle}" and records belonging to that election.`);
+    console.log(`Deleted ${elections.length} test election(s) and their related records.`);
     console.log("Audit history and voter records are retained.");
   }
 } finally {

@@ -1,13 +1,16 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   BadgeCheck,
+  ChartNoAxesCombined,
   FilePlus2,
   LayoutDashboard,
   LockKeyhole,
+  Menu,
+  X,
 } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
 
@@ -15,6 +18,7 @@ const navigation = [
   { section: "overview", label: "Overview", href: "/vote", icon: LayoutDashboard },
   { section: "nominate", label: "Nomination form", href: "/vote/nominate", icon: FilePlus2 },
   { section: "nominees", label: "Approved nominees", href: "/vote/nominees", icon: BadgeCheck },
+  { section: "results", label: "Results", href: "/vote/results", icon: ChartNoAxesCombined },
 ] as const;
 
 export default function VoterDashboardShell({
@@ -24,10 +28,11 @@ export default function VoterDashboardShell({
 }) {
   const pathname = usePathname();
   const activePage = navigation.find((item) => item.href === pathname) ?? navigation[0];
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   return (
     <main className="min-h-dvh bg-[#f7f8f6] text-slate-900 lg:pl-[272px]">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y border-r border-emerald-200/80 bg-white shadow-lg shadow-emerald-950/[0.04] lg:flex lg:h-dvh lg:max-h-dvh">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y-2 border-r-2 border-emerald-700/50 bg-white shadow-lg shadow-emerald-950/[0.08] lg:flex lg:h-dvh lg:max-h-dvh">
         <Link
           href="/vote"
           className="flex h-[76px] items-center gap-3 border-b border-slate-100 px-6"
@@ -83,30 +88,68 @@ export default function VoterDashboardShell({
         </div>
       </aside>
 
-      <div className="min-w-0">
-        <nav aria-label="Voter dashboard mobile navigation" className="mx-3 my-2 flex gap-1 overflow-x-auto rounded-xl border border-emerald-200/80 bg-white p-1 shadow-sm shadow-emerald-950/[0.03] lg:hidden">
-            {navigation.map(({ section, label, href, icon: Icon }) => {
-              const active = activePage.section === section;
-              return (
-                <Link
-                  key={section}
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-medium transition ${
-                    active
-                      ? "bg-emerald-50 font-semibold text-emerald-950 ring-1 ring-inset ring-emerald-700/20"
-                      : "text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  <Icon className="size-3.5" />
-                  {label}
-                  {active ? <span aria-hidden="true" className="size-1.5 rounded-full bg-emerald-700" /> : null}
-                </Link>
-              );
-            })}
-        </nav>
+      <div className="flex min-h-dvh min-w-0 flex-col">
+        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-emerald-500 bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/vote" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting voter dashboard">
+              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <BrandLogo className="size-full object-contain" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold tracking-tight text-slate-950">GRA E-Voting</span>
+                <span className="block text-[10px] font-medium tracking-wide text-slate-500">Voter portal</span>
+              </span>
+            </Link>
+            <button
+              type="button"
+              aria-expanded={mobileNavigationOpen}
+              aria-controls="voter-mobile-navigation"
+              aria-label={mobileNavigationOpen ? "Close navigation" : "Open navigation"}
+              onClick={() => setMobileNavigationOpen((open) => !open)}
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              {mobileNavigationOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
+          </div>
+          {mobileNavigationOpen ? (
+            <nav id="voter-mobile-navigation" aria-label="Voter dashboard navigation" className="mt-3 border-t border-slate-100 pt-2">
+              {navigation.map(({ section, label, href, icon: Icon }) => {
+                const active = activePage.section === section;
+                return (
+                  <Link
+                    key={section}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setMobileNavigationOpen(false)}
+                    className={`group flex min-h-11 min-w-0 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 ${
+                      active
+                        ? "border-emerald-700 bg-emerald-50/70 font-semibold text-emerald-950"
+                        : "border-transparent text-slate-600 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-950 focus-visible:border-emerald-500 focus-visible:bg-emerald-50 focus-visible:text-emerald-950"
+                    }`}
+                  >
+                    <Icon className={`size-4 shrink-0 ${active ? "text-emerald-800" : "text-slate-400 group-hover:text-emerald-700 group-focus-visible:text-emerald-700"}`} />
+                    <span className="min-w-0 truncate">{label}</span>
+                    {active ? <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-700" /> : null}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : null}
+        </div>
 
         {children}
+
+        <footer className="mt-auto border-t border-slate-200 bg-white px-4 py-5 sm:px-8">
+          <div className="mx-auto flex max-w-[1500px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-900">GRA-HOTSC</p>
+              <p className="mt-0.5 text-[10px] text-slate-500">Election services</p>
+            </div>
+            <p className="text-[10px] font-medium text-slate-500 sm:text-right">
+              Ghana Revenue Authority · Voter services portal
+            </p>
+          </div>
+        </footer>
       </div>
     </main>
   );

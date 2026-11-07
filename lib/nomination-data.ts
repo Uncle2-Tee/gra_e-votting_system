@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
 import { connection } from "next/server";
 import {
   decryptVoterField,
@@ -8,6 +9,7 @@ import { synchronizeElectionStatuses } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 import type {
   PendingNominationData,
+  VoterResultsData,
   VoterPortalData,
 } from "@/lib/nomination-types";
 
@@ -18,7 +20,6 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
     await synchronizeElectionStatuses();
     const [positions, candidates] = await Promise.all([
       prisma.position.findMany({
-        where: { election: { status: { in: ["SCHEDULED", "PUBLISHED"] } } },
         orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
         select: {
           id: true,
@@ -69,7 +70,106 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
     };
   } catch (error) {
     logNominationDataError("voter portal", error);
-    return { databaseStatus: "unavailable", positions: [], nominees: [] };
+    return {
+      databaseStatus: "unavailable",
+      positions: [],
+      nominees: [],
+    };
+  }
+}
+
+export async function getVoterResultsData(): Promise<VoterResultsData> {
+  await connection();
+
+  try {
+    await synchronizeElectionStatuses();
+    const closedElectionFilter = {
+      election: {
+        is: { status: { in: ["CLOSED", "RESULTS_PUBLISHED"] } },
+      },
+    } satisfies Prisma.BallotWhereInput & Prisma.BallotSelectionWhereInput;
+    const [elections, ballotCounts, selectionCounts] = await Promise.all([
+      prisma.election.findMany({
+        where: {
+          status: { in: ["CLOSED", "RESULTS_PUBLISHED"] },
+        },
+        orderBy: [{ endsAt: "desc" }, { updatedAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          timezone: true,
+          resultsPublishedAt: true,
+          endsAt: true,
+          positions: {
+            orderBy: { displayOrder: "asc" },
+            select: {
+              id: true,
+              title: true,
+              candidates: {
+                where: { status: "APPROVED" },
+                select: { id: true, nameCiphertext: true },
+              },
+            },
+          },
+        },
+      }),
+      prisma.ballot.groupBy({
+        by: ["electionId"],
+        where: closedElectionFilter,
+        _count: { _all: true },
+      }),
+      prisma.ballotSelection.groupBy({
+        by: ["electionId", "positionId", "candidateId"],
+        where: closedElectionFilter,
+        _count: { _all: true },
+      }),
+    ]);
+
+    const ballotsByElection = new Map(
+      ballotCounts.map(({ electionId, _count }) => [electionId, _count._all]),
+    );
+    const votesByCandidate = new Map(
+      selectionCounts.map(({ electionId, positionId, candidateId, _count }) => [
+        `${electionId}:${positionId}:${candidateId}`,
+        _count._all,
+      ]),
+    );
+
+    return {
+      databaseStatus: "connected",
+      elections: elections.map((election) => ({
+        id: election.id,
+        title: election.title,
+        resultsAvailableAt:
+          (election.resultsPublishedAt ?? election.endsAt)?.toISOString() ?? null,
+        timezone: election.timezone,
+        ballotsCast: ballotsByElection.get(election.id) ?? 0,
+        positions: election.positions.map((position) => {
+          const candidates = position.candidates.map((candidate) => ({
+            id: candidate.id,
+            name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
+            votes:
+              votesByCandidate.get(`${election.id}:${position.id}:${candidate.id}`) ?? 0,
+          }));
+          const totalVotes = candidates.reduce((total, candidate) => total + candidate.votes, 0);
+
+          return {
+            id: position.id,
+            title: position.title,
+            candidates: candidates.map((candidate) => ({
+              ...candidate,
+              percentage:
+                totalVotes === 0
+                  ? 0
+                  : Math.round((candidate.votes / totalVotes) * 1000) / 10,
+            })),
+          };
+        }),
+      })),
+    };
+  } catch (error) {
+    logNominationDataError("published voter results", error);
+    return { databaseStatus: "unavailable", elections: [] };
   }
 }
 

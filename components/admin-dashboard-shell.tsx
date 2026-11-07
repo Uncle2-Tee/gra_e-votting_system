@@ -9,8 +9,10 @@ import {
   FileSpreadsheet,
   LayoutDashboard,
   LogOut,
+  Menu,
   UsersRound,
   Vote,
+  X,
 } from "lucide-react";
 import { signOutAdmin } from "@/app/admin/actions";
 import BrandLogo from "@/components/brand-logo";
@@ -42,6 +44,7 @@ export default function AdminDashboardShell({
 }) {
   const pathname = usePathname();
   const [hash, setHash] = useState("");
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   useEffect(() => {
     const updateHash = () => setHash(window.location.hash);
@@ -56,7 +59,7 @@ export default function AdminDashboardShell({
 
   return (
     <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y border-r border-emerald-200/80 bg-white shadow-lg shadow-emerald-950/[0.04] lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y-2 border-r-2 border-emerald-700/50 bg-white shadow-lg shadow-emerald-950/[0.08] lg:flex">
         <Link
           href="/admin"
           className="flex h-[76px] items-center gap-3 border-b border-slate-100 px-6"
@@ -125,34 +128,63 @@ export default function AdminDashboardShell({
       </aside>
 
       <div className="lg:pl-[272px]">
-        <div className="border-b border-emerald-100 bg-transparent px-3 py-2 lg:hidden">
-          <div className="flex items-center gap-2">
-            <nav aria-label="Administrator mobile navigation" className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-xl border border-emerald-200/80 bg-white p-1 shadow-sm shadow-emerald-950/[0.03]">
-            {navigationGroups.flatMap((group) => group.items).map(({ id, label, href }) => {
-              const active = id === activePage;
-              return (
-                <Link
-                  key={id}
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[10px] ${
-                    active
-                      ? "bg-emerald-50 font-semibold text-emerald-950 ring-1 ring-inset ring-emerald-700/20"
-                      : "font-medium text-slate-500 hover:bg-slate-50"
-                  }`}
+        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-emerald-500 bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <Link href="/admin" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting administration">
+              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <BrandLogo className="size-full object-contain" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold tracking-tight text-slate-950">GRA E-Voting</span>
+                <span className="block text-[10px] font-medium tracking-wide text-slate-500">Administration</span>
+              </span>
+            </Link>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <form action={signOutAdmin}>
+                <button
+                  aria-label="Sign out"
+                  className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-800"
+                  type="submit"
                 >
-                  {label}
-                  {active && <span aria-hidden="true" className="size-1.5 rounded-full bg-emerald-700" />}
-                </Link>
-              );
-            })}
-            </nav>
-            <form action={signOutAdmin} className="shrink-0 border-l border-slate-200 pl-2">
-              <button className="h-9 rounded-lg px-2.5 text-[10px] font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-800 active:bg-rose-100" type="submit">
-                Sign out
+                  <LogOut className="size-4" />
+                </button>
+              </form>
+              <button
+                type="button"
+                aria-expanded={mobileNavigationOpen}
+                aria-controls="admin-mobile-navigation"
+                aria-label={mobileNavigationOpen ? "Close navigation" : "Open navigation"}
+                onClick={() => setMobileNavigationOpen((open) => !open)}
+                className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                {mobileNavigationOpen ? <X className="size-5" /> : <Menu className="size-5" />}
               </button>
-            </form>
+            </div>
           </div>
+          {mobileNavigationOpen ? (
+            <nav id="admin-mobile-navigation" aria-label="Administrator navigation" className="mt-3 border-t border-slate-100 pt-2">
+              {navigationGroups.flatMap((group) => group.items).map(({ id, label, href, icon: Icon }) => {
+                const active = id === activePage;
+                return (
+                  <Link
+                    key={id}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setMobileNavigationOpen(false)}
+                    className={`group flex min-h-11 min-w-0 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 ${
+                      active
+                        ? "border-emerald-700 bg-emerald-50/70 font-semibold text-emerald-950"
+                        : "border-transparent text-slate-600 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-950 focus-visible:border-emerald-500 focus-visible:bg-emerald-50 focus-visible:text-emerald-950"
+                    }`}
+                  >
+                    <Icon className={`size-4 shrink-0 ${active ? "text-emerald-800" : "text-slate-400 group-hover:text-emerald-700 group-focus-visible:text-emerald-700"}`} strokeWidth={1.8} />
+                    <span className="min-w-0 truncate">{label}</span>
+                    {active && <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-700" />}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : null}
         </div>
         {children}
       </div>

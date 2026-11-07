@@ -147,15 +147,12 @@ export async function submitNominationApplication(
     const applicantPhoneCiphertext = encryptVoterField(normalizedPhone, "nomination-phone");
     const candidateId = randomUUID();
     const auditId = randomUUID();
-    const resultRows = await prisma.$queryRaw<{ result: "closed" | "duplicate" | "submitted" }[]>(
+    const resultRows = await prisma.$queryRaw<{ result: "unavailable" | "duplicate" | "submitted" }[]>(
       Prisma.sql`
         WITH eligible_election AS MATERIALIZED (
           SELECT "id"
           FROM "Election"
           WHERE "id" = ${position.electionId}::uuid
-            AND "status" IN ('SCHEDULED', 'PUBLISHED')
-            AND ("startsAt" IS NULL OR "startsAt" > CURRENT_TIMESTAMP)
-            AND ("endsAt" IS NULL OR "endsAt" > CURRENT_TIMESTAMP)
           FOR SHARE
         ),
         saved_candidate AS (
@@ -233,7 +230,7 @@ export async function submitNominationApplication(
           RETURNING "id"
         )
         SELECT CASE
-          WHEN NOT EXISTS (SELECT 1 FROM eligible_election) THEN 'closed'
+          WHEN NOT EXISTS (SELECT 1 FROM eligible_election) THEN 'unavailable'
           WHEN EXISTS (SELECT 1 FROM saved_candidate) THEN 'submitted'
           ELSE 'duplicate'
         END AS "result",
@@ -242,10 +239,10 @@ export async function submitNominationApplication(
     );
     const result = resultRows[0]?.result;
 
-    if (result === "closed") {
+    if (result === "unavailable") {
       return {
         ...INITIAL_STATE,
-        error: "That nomination form has closed. Refresh the page to see current forms.",
+        error: "That nomination position is no longer available. Refresh the page and try again.",
       };
     }
     if (result === "duplicate") {
@@ -259,6 +256,7 @@ export async function submitNominationApplication(
     }
 
     revalidatePath("/vote");
+    revalidatePath("/vote/nominate");
     revalidatePath("/admin/nominations");
     return { error: null, success: true };
   } catch (error) {

@@ -1,35 +1,4 @@
-import { Suspense } from "react";
-import { connection } from "next/server";
 import AdminEligibilityImport from "@/components/admin-eligibility-import";
-import { synchronizeElectionStatuses } from "@/lib/election-schedule";
-import { prisma } from "@/lib/prisma";
-
-async function EligibilityData() {
-  await connection();
-  let elections: { id: string; title: string; status: string }[] = [];
-  let electionsError: string | null = null;
-  try {
-    await synchronizeElectionStatuses();
-    elections = await prisma.election.findMany({
-      where: { status: { in: ["DRAFT", "SCHEDULED", "PUBLISHED"] } },
-      orderBy: [{ startsAt: "asc" }, { title: "asc" }],
-      select: { id: true, title: true, status: true },
-    });
-  } catch (error) {
-    const errorCode =
-      typeof error === "object" && error !== null && "code" in error &&
-      typeof error.code === "string" ? error.code : "UNKNOWN";
-    console.error("Could not load elections for eligibility import.", {
-      errorName: error instanceof Error ? error.name : "UnknownError",
-      errorCode,
-    });
-    electionsError = "Election options are unavailable because the database could not be reached.";
-  }
-
-  return (
-    <AdminEligibilityImport elections={elections} electionsError={electionsError} />
-  );
-}
 
 export default function AdminEligibilityPage() {
   return (
@@ -42,12 +11,10 @@ export default function AdminEligibilityPage() {
           Eligibility &amp; imports
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-          Import an election roster. Only matched, eligible voter records can be used by a future election sign-in and voting workflow.
+          Register voters once. They will be eligible for all current open and upcoming elections, as well as elections created in the future.
         </p>
       </div>
-      <Suspense fallback={<div className="rounded-xl border border-slate-200/80 bg-white px-5 py-8 text-sm text-slate-500">Loading eligibility imports…</div>}>
-        <EligibilityData />
-      </Suspense>
+      <AdminEligibilityImport />
     </main>
   );
 }

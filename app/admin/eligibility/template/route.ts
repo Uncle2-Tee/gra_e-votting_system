@@ -24,13 +24,12 @@ export async function GET(request: Request) {
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Eligible voters");
-  worksheet.addRow(["Name", "Phone Number", "Email", "Department"]);
+  worksheet.addRow(["Name", "Department", "Phone Number"]);
   worksheet.getRow(1).font = { bold: true };
   worksheet.columns = [
     { width: 28 },
     { width: 20 },
     { width: 32 },
-    { width: 24 },
   ];
 
   const bytes = await workbook.xlsx.writeBuffer();

@@ -51,10 +51,11 @@ function resolveHeaders(worksheet: ExcelJS.Worksheet) {
     "telephone",
     "contactnumber",
   ]);
+  const department = findColumn(["department", "unit", "division"]);
 
-  if (!name || !phone) {
+  if (!name || !phone || !department) {
     throw new EligibilitySpreadsheetError(
-      "The first row must include Name and Phone Number columns. Email and Department are optional.",
+      "The first row must include Name, Department, and Phone Number columns. Email is optional.",
     );
   }
 
@@ -62,7 +63,7 @@ function resolveHeaders(worksheet: ExcelJS.Worksheet) {
     name,
     phone,
     email: findColumn(["email", "emailaddress"]),
-    department: findColumn(["department", "unit", "division"]),
+    department,
   };
 }
 
@@ -137,6 +138,9 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
     }
     if (department.length > 150) {
       rowErrors.push("invalid_department");
+    }
+    if (!department) {
+      rowErrors.push("missing_department");
     }
 
     if (rowErrors.length > 0) {

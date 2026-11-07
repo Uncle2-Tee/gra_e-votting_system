@@ -1,26 +1,13 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import Link from "next/link";
 import { FileSpreadsheet, ShieldCheck, X } from "lucide-react";
 import { importEligibleVoters } from "@/app/admin/eligibility/actions";
 import type { EligibilityImportState } from "@/lib/eligibility-import-types";
 
-type ElectionOption = {
-  id: string;
-  title: string;
-  status: string;
-};
-
 const initialState: EligibilityImportState = { error: null, result: null };
 
-export default function AdminEligibilityImport({
-  elections,
-  electionsError,
-}: {
-  elections: ElectionOption[];
-  electionsError: string | null;
-}) {
+export default function AdminEligibilityImport() {
   const [state, action, pending] = useActionState(importEligibleVoters, initialState);
   const [selectedFileName, setSelectedFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,30 +20,14 @@ export default function AdminEligibilityImport({
             <FileSpreadsheet className="size-5" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Upload eligible voters</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Each roster applies to one election.</p>
+            <h2 className="text-sm font-semibold text-slate-900">Import voter registry</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Registered voters are eligible for every current and future election.
+            </p>
           </div>
         </div>
 
         <label className="mt-6 block text-xs font-medium text-slate-700">
-          Election
-          <select
-            className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
-            name="electionId"
-            required
-            defaultValue=""
-            disabled={elections.length === 0 || pending}
-          >
-            <option value="" disabled>Select an election</option>
-            {elections.map((election) => (
-              <option key={election.id} value={election.id}>
-                {election.title} · {election.status.replaceAll("_", " ")}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="mt-4 block text-xs font-medium text-slate-700">
           Excel workbook (.xlsx)
           <input
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -95,21 +66,6 @@ export default function AdminEligibilityImport({
           </span>
         </label>
 
-        {electionsError ? (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
-            {electionsError}
-          </p>
-        ) : elections.length === 0 ? (
-          <div className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-            <p>There are no elections available for importing eligibility. Create a draft election first.</p>
-            <Link
-              href="/admin/elections"
-              className="mt-2 inline-flex font-semibold text-emerald-900 underline decoration-emerald-700/40 underline-offset-2 hover:text-emerald-950"
-            >
-              Create an election
-            </Link>
-          </div>
-        ) : null}
         {state.error && (
           <p aria-live="polite" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
             {state.error}
@@ -119,16 +75,16 @@ export default function AdminEligibilityImport({
           <div aria-live="polite" className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
             <p className="text-xs font-semibold text-emerald-900">Import saved</p>
             <p className="mt-1 text-xs leading-5 text-emerald-800">
-              {state.result.acceptedRows} eligible · {state.result.rejectedRows} rejected · {state.result.skippedRows} skipped
+              {state.result.acceptedRows} registered · {state.result.electionsUpdated} current elections updated · {state.result.rejectedRows} rejected · {state.result.skippedRows} skipped
             </p>
           </div>
         )}
         <button
           className="mt-5 h-10 rounded-lg bg-emerald-800 px-4 text-xs font-semibold text-white transition-colors hover:bg-emerald-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={elections.length === 0 || pending}
+          disabled={pending}
           type="submit"
         >
-          {pending ? "Validating and saving…" : "Import eligibility"}
+          {pending ? "Validating and saving…" : "Import voter roster"}
         </button>
       </form>
 
@@ -138,11 +94,10 @@ export default function AdminEligibilityImport({
           <h2 className="text-sm font-semibold">Workbook requirements</h2>
         </div>
         <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
-          <li><strong className="text-slate-800">Required columns:</strong> Name and Phone Number.</li>
-          <li><strong className="text-slate-800">Optional columns:</strong> Email and Department.</li>
+          <li><strong className="text-slate-800">Required columns:</strong> Name, Department, and Phone Number.</li>
           <li>One worksheet only; the first row contains column headers.</li>
-          <li>Repeated people in one file are skipped. Existing voters are linked to this election without duplicating their account.</li>
-          <li>The upload adds or restores eligibility; it does not remove voters omitted from a later file.</li>
+          <li>Repeated people in one file are skipped. Existing voter accounts are matched without duplication.</li>
+          <li>Voters are eligible for current open or upcoming elections and all elections created in the future. Closed elections are unchanged.</li>
           <li>Personal values are encrypted before storage. Import history stores counts and row numbers, not spreadsheet values.</li>
         </ul>
         <a

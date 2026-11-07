@@ -35,6 +35,66 @@ export type AdminOverview = {
   auditEvents: [];
 };
 
+export type AdminElectionSchedules = {
+  databaseStatus: "connected";
+  elections: {
+    id: string;
+    title: string;
+    status: string;
+    startsAt: string | null;
+    endsAt: string | null;
+    timezone: string;
+    positions: string[];
+  }[];
+} | {
+  databaseStatus: "unavailable";
+  elections: [];
+};
+
+export async function getAdminElectionSchedules(): Promise<AdminElectionSchedules> {
+  await connection();
+
+  try {
+    await synchronizeElectionStatuses();
+    const elections = await prisma.election.findMany({
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        startsAt: true,
+        endsAt: true,
+        timezone: true,
+        positions: {
+          orderBy: { displayOrder: "asc" },
+          select: { title: true },
+        },
+      },
+    });
+
+    return {
+      databaseStatus: "connected",
+      elections: elections.map((election) => ({
+        ...election,
+        startsAt: election.startsAt?.toISOString() ?? null,
+        endsAt: election.endsAt?.toISOString() ?? null,
+        positions: election.positions.map(({ title }) => title),
+      })),
+    };
+  } catch (error) {
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    const errorCode =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "string"
+        ? ` (${error.code})`
+        : "";
+    console.warn(`Failed to load administrator election schedules: ${errorName}${errorCode}`);
+    return { databaseStatus: "unavailable", elections: [] };
+  }
+}
+
 export async function getAdminOverview(): Promise<AdminOverview> {
   await connection();
 

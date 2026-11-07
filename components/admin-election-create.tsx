@@ -1,15 +1,17 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CalendarPlus2 } from "lucide-react";
+import { CalendarPlus2, Plus, X } from "lucide-react";
 import { createElection } from "@/app/admin/elections/actions";
 import { ELECTION_TIMEZONE } from "@/lib/election-timezone";
+import { NOMINATION_POSITION_OPTIONS } from "@/lib/nomination-positions";
 
 const initialState = { error: null, success: null };
 
 export default function AdminElectionCreate() {
   const [state, action, pending] = useActionState(createElection, initialState);
   const [startsAt, setStartsAt] = useState("");
+  const [positions, setPositions] = useState<string[]>([""]);
 
   return (
     <form
@@ -72,26 +74,64 @@ export default function AdminElectionCreate() {
         </div>
         <label className="text-xs font-medium text-slate-700 sm:col-span-2">
           Nomination positions
-          <textarea
-            className="mt-1.5 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
-            name="positions"
-            required
-            maxLength={1700}
-            placeholder={"President\nVice President\nSecretary"}
-            aria-describedby="election-positions-help"
-          />
-          <span id="election-positions-help" className="mt-1 block text-[11px] leading-4 text-slate-500">
-            Enter one position per line. These options will appear on the voter nomination form.
-          </span>
-        </label>
-        <label className="text-xs font-medium text-slate-700 sm:col-span-2">
-          Description <span className="font-normal text-slate-400">· optional</span>
-          <textarea
-            className="mt-1.5 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
-            name="description"
-            maxLength={2000}
-            placeholder="Add the purpose or details of this election."
-          />
+          <div className="mt-1.5 space-y-2">
+            {positions.map((position, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <select
+                  aria-label={`Nomination position ${index + 1}`}
+                  className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+                  name="positions"
+                  required
+                  value={position}
+                  onChange={(event) =>
+                    setPositions((current) =>
+                      current.map((value, row) =>
+                        row === index ? event.target.value : value,
+                      ),
+                    )
+                  }
+                >
+                  <option value="" disabled>
+                    Select a position
+                  </option>
+                  {NOMINATION_POSITION_OPTIONS.filter(
+                    (option) =>
+                      !positions.some(
+                        (selected, row) => row !== index && selected === option,
+                      ),
+                  ).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {positions.length > 1 ? (
+                  <button
+                    type="button"
+                    aria-label={`Remove position ${index + 1}`}
+                    onClick={() =>
+                      setPositions((current) =>
+                        current.filter((_, positionIndex) => positionIndex !== index),
+                      )
+                    }
+                    className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <X className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+            ))}
+            {positions.length < NOMINATION_POSITION_OPTIONS.length ? (
+              <button
+                type="button"
+                onClick={() => setPositions((current) => [...current, ""])}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-800/20 px-3 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-50"
+              >
+                <Plus className="size-3.5" />
+                Add position
+              </button>
+            ) : null}
+          </div>
         </label>
       </div>
 

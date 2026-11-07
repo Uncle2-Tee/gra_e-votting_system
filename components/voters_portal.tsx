@@ -1,9 +1,10 @@
 import {
   ArrowRight,
   BadgeCheck,
+  ChartNoAxesCombined,
   CheckCircle2,
   ClipboardCheck,
-  Fingerprint,
+  Clock3,
   LockKeyhole,
   ShieldCheck,
   UsersRound,
@@ -11,9 +12,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import NominationApplicationForm from "@/components/nomination-application-form";
-import type { VoterPortalData } from "@/lib/nomination-types";
+import ResultsAutoRefresh from "@/components/results-auto-refresh";
+import type { VoterPortalData, VoterResultsData } from "@/lib/nomination-types";
 
-type PortalSection = "overview" | "nominees" | "nominate";
+type PortalSection = "overview" | "nominees" | "nominate" | "results";
 
 function PageHeading({
   eyebrow,
@@ -62,7 +64,7 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
       {data.nominees.map((nominee) => (
         <article
           key={nominee.id}
-          className="h-fit min-w-0 w-fit max-w-full rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm shadow-slate-950/[0.02] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md hover:shadow-emerald-950/[0.04] sm:max-w-md"
+          className="h-fit min-w-0 w-full max-w-full rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm shadow-slate-950/[0.02] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md hover:shadow-emerald-950/[0.04] sm:w-fit sm:max-w-md"
         >
           <div className="flex min-w-0 items-start gap-3">
             {nominee.photoUrl ? (
@@ -111,6 +113,139 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
   );
 }
 
+function ResultsPanel({ data }: { data: VoterResultsData }) {
+  return (
+    <>
+      <ResultsAutoRefresh />
+      <PageHeading
+        eyebrow="Election results"
+        title="Results & reports"
+        description="Final tallies appear automatically once an election has closed."
+      />
+      <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+        <Clock3 className="size-3.5" />
+        This page checks for newly closed elections every 30 seconds.
+      </p>
+      {data.databaseStatus === "unavailable" ? (
+        <div role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Election results are temporarily unavailable. Please try again later.
+        </div>
+      ) : data.elections.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+          <span className="mx-auto flex size-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <ChartNoAxesCombined className="size-5" />
+          </span>
+          <h2 className="mt-3 text-sm font-semibold text-slate-800">
+            No elections have closed
+          </h2>
+          <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500">
+            Final results will appear here automatically after voting closes. Results are not shown while an election is open.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-5">
+          {data.elections.map((election) => (
+            <article key={election.id} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-700 uppercase">
+                    Final results
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">
+                    {election.title}
+                  </h2>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {election.resultsAvailableAt ? (
+                      <>
+                        Available{" "}
+                        {new Intl.DateTimeFormat("en", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                          timeZone: election.timezone,
+                        }).format(new Date(election.resultsAvailableAt))}{" "}
+                        {election.timezone}
+                      </>
+                    ) : "Results available"}
+                  </p>
+                </div>
+                <div className="w-fit rounded-xl bg-slate-50 px-3 py-2 sm:text-right">
+                  <p className="text-lg font-semibold text-slate-900">{election.ballotsCast}</p>
+                  <p className="text-[10px] text-slate-500">Ballots counted</p>
+                </div>
+              </div>
+
+              {election.positions.length > 0 ? (
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  {election.positions.map((position) => {
+                    const highestVotes = Math.max(
+                      0,
+                      ...position.candidates.map((candidate) => candidate.votes),
+                    );
+                    const tiedLeaders =
+                      highestVotes > 0 &&
+                      position.candidates.filter((candidate) => candidate.votes === highestVotes).length > 1;
+
+                    return (
+                      <section key={position.id} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                        <h3 className="text-sm font-semibold text-slate-900">{position.title}</h3>
+                        {position.candidates.length > 0 ? (
+                          <ul className="mt-3 space-y-3">
+                            {position.candidates.map((candidate) => (
+                              <li key={candidate.id} className="min-w-0">
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="min-w-0 break-words text-xs font-medium text-slate-700">
+                                    {candidate.name}
+                                    {highestVotes > 0 && candidate.votes === highestVotes ? (
+                                      <span className="ml-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold text-emerald-800">
+                                        {tiedLeaders ? "Tied" : "Winner"}
+                                      </span>
+                                    ) : null}
+                                  </p>
+                                  <p className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-800">
+                                    {candidate.votes}{" "}
+                                    <span className="font-normal text-slate-500">
+                                      ({candidate.percentage}%)
+                                    </span>
+                                  </p>
+                                </div>
+                                <div
+                                  className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200"
+                                  role="meter"
+                                  aria-label={`${candidate.name} vote share`}
+                                  aria-valuemin={0}
+                                  aria-valuemax={100}
+                                  aria-valuenow={candidate.percentage}
+                                >
+                                  <div
+                                    className="h-full rounded-full bg-emerald-600 transition-[width]"
+                                    style={{ width: `${candidate.percentage}%` }}
+                                  />
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-xs text-slate-500">
+                            No approved nominees were included for this position.
+                          </p>
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-4 text-xs text-slate-500">
+                  No positions were recorded for this election.
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function Overview({ data }: { data: VoterPortalData }) {
   return (
     <>
@@ -148,7 +283,7 @@ function Overview({ data }: { data: VoterPortalData }) {
         </div>
       </section>
 
-      <section aria-label="Election portal summary" className="mt-5 grid gap-3 sm:grid-cols-3">
+      <section aria-label="Election portal summary" className="mt-5 grid gap-3 sm:grid-cols-2">
         <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
           <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
             <ClipboardCheck className="size-[18px]" />
@@ -165,15 +300,6 @@ function Overview({ data }: { data: VoterPortalData }) {
           <div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{data.nominees.length}</p>
             <p className="text-[11px] text-slate-500">Approved nominee profiles</p>
-          </div>
-        </article>
-        <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-violet-50 text-violet-800">
-            <Fingerprint className="size-[18px]" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-slate-950">Admin reviewed</p>
-            <p className="text-[11px] text-slate-500">Required before ballot listing</p>
           </div>
         </article>
       </section>
@@ -256,14 +382,16 @@ function Overview({ data }: { data: VoterPortalData }) {
 
 export default function VotersPortal({
   data,
+  results,
   section,
 }: {
-  data: VoterPortalData;
+  data: VoterPortalData | null;
+  results: VoterResultsData | null;
   section: PortalSection;
 }) {
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-8 sm:py-9">
-      {data.databaseStatus === "unavailable" ? (
+      {data?.databaseStatus === "unavailable" ? (
         <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-800 ring-1 ring-amber-200">
             <LockKeyhole className="size-4" />
@@ -278,7 +406,7 @@ export default function VotersPortal({
         </div>
       ) : null}
 
-      {section === "overview" ? (
+      {section === "overview" && data ? (
         <>
           <div className="mb-6">
             <PageHeading
@@ -291,7 +419,7 @@ export default function VotersPortal({
         </>
       ) : null}
 
-      {section === "nominees" ? (
+      {section === "nominees" && data ? (
         <>
           <PageHeading
             eyebrow="Candidate directory"
@@ -302,7 +430,7 @@ export default function VotersPortal({
         </>
       ) : null}
 
-      {section === "nominate" ? (
+      {section === "nominate" && data ? (
         <>
           <PageHeading
             eyebrow="Candidate applications"
@@ -318,12 +446,10 @@ export default function VotersPortal({
         </>
       ) : null}
 
-      <footer className="mt-10 flex justify-end border-t border-slate-200/80 pt-5">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
-          <ShieldCheck className="size-3.5" />
-          Privacy is a requirement
-        </span>
-      </footer>
+      {section === "results" && results ? (
+        <ResultsPanel data={results} />
+      ) : null}
+
     </div>
   );
 }

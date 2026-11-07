@@ -9,8 +9,10 @@ import {
   Vote,
 } from "lucide-react";
 import AdminElectionCreate from "@/components/admin-election-create";
+import AdminElectionPositionManager from "@/components/admin-election-position-manager";
+import AdminElectionScheduleEditor from "@/components/admin-election-schedule-editor";
 import AdminNominationReview from "@/components/admin-nomination-review";
-import type { AdminOverview } from "@/lib/admin-overview";
+import type { AdminElectionSchedules, AdminOverview } from "@/lib/admin-overview";
 import type { PendingNominationData } from "@/lib/nomination-types";
 
 function PageHeading({
@@ -65,7 +67,11 @@ function statusStyle(status: string) {
   }
 }
 
-export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
+export function AdminElectionsPage({
+  schedules,
+}: {
+  schedules: AdminElectionSchedules;
+}) {
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
       <PageHeading
@@ -83,7 +89,7 @@ export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
             <div>
               <p className="text-xs font-semibold text-slate-900">Election schedule</p>
               <p className="mt-0.5 text-[10px] text-slate-500">
-                {overview.elections.length} recently updated {overview.elections.length === 1 ? "election" : "elections"}
+                {schedules.elections.length} {schedules.elections.length === 1 ? "election" : "elections"}
               </p>
             </div>
           </div>
@@ -92,9 +98,9 @@ export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
             Schedule overview
           </span>
         </div>
-        {overview.elections.length > 0 ? (
+        {schedules.elections.length > 0 ? (
           <ul className="divide-y divide-slate-100">
-            {overview.elections.map((election) => (
+            {schedules.elections.map((election) => (
               <li key={election.id} className="flex min-w-0 flex-col gap-2 px-4 py-4 transition-colors hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-800">{election.title}</p>
@@ -102,6 +108,8 @@ export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
                     Opens {formatElectionDate(election.startsAt, election.timezone)}
                     {election.endsAt ? ` · Closes ${formatElectionDate(election.endsAt, election.timezone)}` : ""}
                   </p>
+                  <AdminElectionPositionManager election={election} />
+                  <AdminElectionScheduleEditor election={election} />
                 </div>
                 <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
                   {election.status.replaceAll("_", " ")}
@@ -115,12 +123,12 @@ export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
               <ClipboardList className="size-[18px]" />
             </span>
             <h2 className="mt-3 text-sm font-semibold text-slate-800">
-              {overview.databaseStatus === "connected"
+              {schedules.databaseStatus === "connected"
                 ? "No elections have been created"
                 : "Election data is unavailable"}
             </h2>
             <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
-              {overview.databaseStatus === "connected"
+              {schedules.databaseStatus === "connected"
                 ? "Elections will appear here once they have been created."
                 : "Election schedules and statuses could not be loaded from the database."}
             </p>
@@ -128,7 +136,7 @@ export function AdminElectionsPage({ overview }: { overview: AdminOverview }) {
         )}
         <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:px-6">
           <p className="text-[10px] text-slate-500">
-            Showing the {overview.elections.length} most recently updated election(s).
+            All elections are listed, with the most recently updated first.
           </p>
         </div>
       </section>
@@ -178,7 +186,7 @@ export function AdminVotersPage({ overview }: { overview: AdminOverview }) {
       <PageHeading
         eyebrow="Voter management"
         title="Voter registry"
-        description="Review voter registration totals and manage election eligibility records."
+        description="Review voter registration totals and manage the shared voter registry."
       />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -202,7 +210,7 @@ export function AdminVotersPage({ overview }: { overview: AdminOverview }) {
             </span>
             <h2 className="mt-3 text-sm font-semibold text-slate-900">Manage voter eligibility</h2>
             <p className="mt-1 max-w-md text-xs leading-5 text-slate-600">
-              Import a voter roster and assign eligible voters to an election.
+              Import a voter roster to register voters for all current and future elections.
             </p>
           </div>
           <Link
