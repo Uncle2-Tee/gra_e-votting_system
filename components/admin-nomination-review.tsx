@@ -13,7 +13,10 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { reviewNomination } from "@/app/admin/nominations/actions";
+import {
+  removeApprovedNomination,
+  reviewNomination,
+} from "@/app/admin/nominations/actions";
 import type {
   NominationReviewState,
   PendingNomination,
@@ -78,7 +81,8 @@ function NominationCard({ application }: { application: PendingNomination }) {
           </span>
         </div>
 
-        <details className="group/statement mt-3 rounded-xl border border-emerald-100/80 bg-emerald-50/40">
+        {application.biography ? (
+          <details className="group/statement mt-3 rounded-xl border border-emerald-100/80 bg-emerald-50/40">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-[10px] font-semibold text-emerald-900 [&::-webkit-details-marker]:hidden">
             <ShieldCheck className="size-3.5 text-emerald-700" />
             Candidate statement
@@ -91,10 +95,11 @@ function NominationCard({ application }: { application: PendingNomination }) {
           </summary>
           <div className="border-t border-emerald-100/80 px-3 py-2.5">
             <p className="whitespace-pre-wrap text-xs leading-5 text-slate-700">
-              {application.biography || "No candidate statement was provided."}
+              {application.biography}
             </p>
           </div>
-        </details>
+          </details>
+        ) : null}
 
         <div className="mt-3 flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1.5">
@@ -154,6 +159,11 @@ function NominationCard({ application }: { application: PendingNomination }) {
 }
 
 function ApprovedNominationCard({ application }: { application: PendingNomination }) {
+  const [state, action, pending] = useActionState(
+    removeApprovedNomination,
+    initialState,
+  );
+
   return (
     <article className="flex h-fit w-full min-w-0 max-w-full items-start gap-3 rounded-xl border border-emerald-100 bg-white p-3.5 shadow-sm shadow-slate-950/[0.02] sm:w-fit sm:max-w-xl">
       {application.photoUrl ? (
@@ -203,6 +213,23 @@ function ApprovedNominationCard({ application }: { application: PendingNominatio
             {application.biography}
           </p>
         ) : null}
+        <form action={action} className="mt-3 border-t border-slate-100 pt-2">
+          <input type="hidden" name="candidateId" value={application.id} />
+          {state.error ? (
+            <p role="alert" className="mb-2 text-[10px] leading-4 text-red-700">
+              {state.error}
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            aria-label={`Remove ${application.name} from approved nominees`}
+            disabled={pending}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-2.5 text-[10px] font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60"
+          >
+            <X className="size-3" />
+            {pending ? "Removing…" : "Remove nominee"}
+          </button>
+        </form>
       </div>
     </article>
   );

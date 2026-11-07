@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { createVoterIdentityLookupHash, normalizePhoneNumber } from "@/lib/voter-data-crypto";
+import { createVoterNameLookupHash } from "@/lib/voter-data-crypto";
 import type { EligibilityImportRowResult } from "@/lib/eligibility-import-types";
 
 const MAX_IMPORT_ROWS = 5000;
@@ -42,29 +42,13 @@ function resolveHeaders(worksheet: ExcelJS.Worksheet) {
   const findColumn = (aliases: string[]) =>
     aliases.map((alias) => headers.get(alias)).find((column) => column !== undefined);
   const name = findColumn(["name", "fullname", "votername"]);
-  const phone = findColumn([
-    "phone",
-    "phonenumber",
-    "phonenumbers",
-    "mobile",
-    "mobilenumber",
-    "telephone",
-    "contactnumber",
-  ]);
-  const department = findColumn(["department", "unit", "division"]);
-
-  if (!name || !phone || !department) {
+  if (!name) {
     throw new EligibilitySpreadsheetError(
-      "The first row must include Name, Department, and Phone Number columns. Email is optional.",
+      "The first row must include a Name column.",
     );
   }
 
-  return {
-    name,
-    phone,
-    email: findColumn(["email", "emailaddress"]),
-    department,
-  };
+  return { name };
 }
 
 function cellValue(worksheet: ExcelJS.Worksheet, row: number, column?: number) {
@@ -100,20 +84,9 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
   for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const rowErrors: string[] = [];
     let name = "";
-    let phone = "";
-    let email = "";
-    let department = "";
 
     try {
       name = cellValue(worksheet, rowNumber, columns.name);
-      const phoneCell = worksheet.getRow(rowNumber).getCell(columns.phone);
-      if (typeof phoneCell.value === "number") {
-        rowErrors.push("phone_must_be_text");
-      } else {
-        phone = getCellText(phoneCell);
-      }
-      email = cellValue(worksheet, rowNumber, columns.email);
-      department = cellValue(worksheet, rowNumber, columns.department);
     } catch (error) {
       if (error instanceof EligibilitySpreadsheetError) {
         rowErrors.push("unsupported_cell_value");
@@ -122,7 +95,7 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
       }
     }
 
-    if (!name && !phone && !email && !department && rowErrors.length === 0) {
+    if (!name && rowErrors.length === 0) {
       rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["empty_row"] });
       continue;
     }
@@ -130,32 +103,12 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
     if (!name || name.length > 150) {
       rowErrors.push("invalid_name");
     }
-    if (!phone || phone.length > 30 || !/^\+?[0-9\s().-]+$/.test(phone)) {
-      rowErrors.push("invalid_phone");
-    }
-    if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
-      rowErrors.push("invalid_email");
-    }
-    if (department.length > 150) {
-      rowErrors.push("invalid_department");
-    }
-    if (!department) {
-      rowErrors.push("missing_department");
-    }
-
     if (rowErrors.length > 0) {
       rows.push({ rowNumber, status: "REJECTED", errorCodes: rowErrors });
       continue;
     }
 
-    const normalizedPhone = normalizePhoneNumber(phone);
-    const digits = normalizedPhone.replace(/^\+/, "");
-    if (digits.length < 7 || digits.length > 15) {
-      rows.push({ rowNumber, status: "REJECTED", errorCodes: ["invalid_phone"] });
-      continue;
-    }
-
-    const lookupHash = createVoterIdentityLookupHash(name, normalizedPhone);
+    const lookupHash = createVoterNameLookupHash(name);
     if (seenIdentities.has(lookupHash)) {
       rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["duplicate_in_upload"] });
       continue;
@@ -167,9 +120,6 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
       errorCodes: [],
       voter: {
         name: name.normalize("NFKC").trim().replace(/\s+/g, " "),
-        phone: normalizedPhone,
-        email: email || null,
-        department: department || null,
         lookupHash,
       },
     });

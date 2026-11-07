@@ -93,7 +93,6 @@ export async function submitNominationApplication(
   const email = readText(formData, "email").normalize("NFKC").toLocaleLowerCase("en");
   const phone = readText(formData, "phone");
   const positionId = readText(formData, "positionId");
-  const biography = readText(formData, "biography").normalize("NFKC");
   const consent = formData.get("consent") === "on";
   const photoEntry = formData.get("photo");
 
@@ -116,12 +115,6 @@ export async function submitNominationApplication(
   }
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(positionId)) {
     return { ...INITIAL_STATE, error: "Select an available nomination form." };
-  }
-  if (biography.length < 30 || biography.length > 1200) {
-    return {
-      ...INITIAL_STATE,
-      error: "Your candidate statement must be between 30 and 1,200 characters.",
-    };
   }
   if (!consent) {
     return {
@@ -153,6 +146,7 @@ export async function submitNominationApplication(
           SELECT "id"
           FROM "Election"
           WHERE "id" = ${position.electionId}::uuid
+            AND "status" != 'ARCHIVED'::"ElectionStatus"
           FOR SHARE
         ),
         saved_candidate AS (
@@ -181,7 +175,7 @@ export async function submitNominationApplication(
             ${applicantEmailCiphertext},
             ${applicantPhoneCiphertext},
             ${applicantLookupHash},
-            ${biography},
+            NULL,
             ${photoData},
             ${photoData ? "image/webp" : null},
             'PENDING'::"CandidateStatus",

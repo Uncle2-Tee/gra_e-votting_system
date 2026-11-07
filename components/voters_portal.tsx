@@ -99,14 +99,16 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
               </p>
             </div>
           </div>
-          <div className="mt-3 border-t border-slate-100 pt-2.5">
-            <p className="text-[10px] font-medium text-slate-500">
-              Candidate statement
-            </p>
-            <p className="mt-1.5 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
-              {nominee.biography || "Candidate statement not provided."}
-            </p>
-          </div>
+          {nominee.biography ? (
+            <div className="mt-3 border-t border-slate-100 pt-2.5">
+              <p className="text-[10px] font-medium text-slate-500">
+                Candidate statement
+              </p>
+              <p className="mt-1.5 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
+                {nominee.biography}
+              </p>
+            </div>
+          ) : null}
         </article>
       ))}
     </div>
@@ -435,7 +437,7 @@ export default function VotersPortal({
           <PageHeading
             eyebrow="Candidate applications"
             title="Nomination form"
-            description="Choose an available position, submit your candidate statement, and wait for an administrator to review your application."
+            description="Choose an available position and submit your details for administrator review."
           />
           <div className="mt-6">
             <NominationApplicationForm

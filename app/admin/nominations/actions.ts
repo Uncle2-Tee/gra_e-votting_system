@@ -152,3 +152,117 @@ export async function reviewNomination(
     };
   }
 }
+
+export async function removeApprovedNomination(
+  _previousState: NominationReviewState,
+  formData: FormData,
+): Promise<NominationReviewState> {
+  let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
+  try {
+    admin = await getCurrentAdmin();
+  } catch (error) {
+    if (!isAdminDatabaseUnavailableError(error)) {
+      throw error;
+    }
+    return {
+      ...INITIAL_STATE,
+      error: "Nominees cannot be removed right now because the database is unavailable.",
+    };
+  }
+  if (!admin) {
+    return { ...INITIAL_STATE, error: "Your administrator session has expired. Sign in again." };
+  }
+  if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
+    return { ...INITIAL_STATE, error: "You are not authorized to remove approved nominees." };
+  }
+
+  const candidateId = formData.get("candidateId");
+  if (typeof candidateId !== "string" || !UUID_PATTERN.test(candidateId)) {
+    return { ...INITIAL_STATE, error: "This removal request is invalid. Refresh and try again." };
+  }
+
+  try {
+    const auditId = randomUUID();
+    const resultRows = await prisma.$queryRaw<{
+      result: "not-approved" | "removed";
+    }[]>(Prisma.sql`
+      WITH approved_candidate AS MATERIALIZED (
+        SELECT "id"
+        FROM "Candidate"
+        WHERE "id" = ${candidateId}::uuid
+          AND "status" = 'APPROVED'
+        FOR UPDATE
+      ),
+      removed_candidate AS (
+        UPDATE "Candidate" AS candidate
+        SET
+          "status" = 'INACTIVE'::"CandidateStatus",
+          "reviewedById" = ${admin.id}::uuid,
+          "reviewedAt" = CURRENT_TIMESTAMP,
+          "reviewNote" = 'Removed from approved nominees by administrator',
+          "updatedAt" = CURRENT_TIMESTAMP
+        FROM approved_candidate
+        WHERE candidate."id" = approved_candidate."id"
+          AND candidate."status" = 'APPROVED'
+        RETURNING candidate."id"
+      ),
+      audit_entry AS (
+        INSERT INTO "AuditLog" (
+          "id",
+          "actorId",
+          "action",
+          "entityType",
+          "entityId",
+          "outcome"
+        )
+        SELECT
+          ${auditId}::uuid,
+          ${admin.id}::uuid,
+          'CANDIDATE_NOMINATION_REMOVED',
+          'CANDIDATE',
+          "id"::text,
+          'INACTIVE'
+        FROM removed_candidate
+        RETURNING "id"
+      )
+      SELECT CASE
+        WHEN EXISTS (SELECT 1 FROM removed_candidate) THEN 'removed'
+        ELSE 'not-approved'
+      END AS "result",
+      (SELECT COUNT(*) FROM audit_entry) AS "auditCount"
+    `);
+    const result = resultRows[0]?.result;
+    if (result === "not-approved") {
+      return {
+        ...INITIAL_STATE,
+        error: "This nominee is no longer approved. Refresh the page and try again.",
+      };
+    }
+    if (result !== "removed") {
+      throw new Error("The nominee removal query returned no result.");
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/nominations");
+    revalidatePath("/vote");
+    revalidatePath("/vote/nominees");
+    revalidatePath("/vote/results");
+    return {
+      error: null,
+      success: "Nominee removed from voter-facing lists. Historical results are preserved.",
+    };
+  } catch (error) {
+    const errorCode =
+      error instanceof Prisma.PrismaClientKnownRequestError
+        ? error.code
+        : "UNKNOWN";
+    console.error("Approved nominee removal failed.", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorCode,
+    });
+    return {
+      ...INITIAL_STATE,
+      error: "The nominee could not be removed. Refresh the page and try again.",
+    };
+  }
+}

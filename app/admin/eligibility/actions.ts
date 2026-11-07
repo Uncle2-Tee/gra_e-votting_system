@@ -4,9 +4,10 @@ import { Prisma, type ElectionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  decryptVoterField,
   encryptVoterField,
-  normalizePhoneNumber,
   normalizeVoterName,
+  createVoterNameLookupHash,
 } from "@/lib/voter-data-crypto";
 import {
   getCurrentAdmin,
@@ -78,16 +79,43 @@ export async function importEligibleVoters(
     throw error;
   }
 
-  const acceptedRows = rows.filter((row) => row.status === "ACCEPTED");
-  const rejectedRows = rows.filter((row) => row.status === "REJECTED").length;
-  const skippedRows = rows.filter((row) => row.status === "SKIPPED").length;
-  const acceptedVoters = acceptedRows.flatMap((row) => row.voter ? [row.voter] : []);
-
   try {
-    const electionsUpdated = await prisma.$transaction(async (transaction) => {
+    const result = await prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw`
         SELECT pg_advisory_xact_lock(604218731)::text AS lock_result
       `;
+
+      const existingVoters = await transaction.voter.findMany({
+        select: { id: true, nameCiphertext: true },
+      });
+      const voterIdsByNameHash = new Map<string, string[]>();
+      for (const voter of existingVoters) {
+        const name = decryptVoterField(voter.nameCiphertext, "voter-name");
+        const lookupHash = createVoterNameLookupHash(name);
+        const voterIds = voterIdsByNameHash.get(lookupHash) ?? [];
+        voterIds.push(voter.id);
+        voterIdsByNameHash.set(lookupHash, voterIds);
+      }
+
+      const importRows = rows.map((row) => {
+        if (row.status !== "ACCEPTED" || !row.voter) {
+          return row;
+        }
+        if (voterIdsByNameHash.has(row.voter.lookupHash)) {
+          return {
+            ...row,
+            status: "SKIPPED" as const,
+            errorCodes: ["already_registered"],
+          };
+        }
+        voterIdsByNameHash.set(row.voter.lookupHash, []);
+        return row;
+      });
+      const acceptedRows = importRows.filter((row) => row.status === "ACCEPTED");
+      const rejectedRows = importRows.filter((row) => row.status === "REJECTED").length;
+      const skippedRows = importRows.filter((row) => row.status === "SKIPPED").length;
+      const acceptedVoters = acceptedRows.flatMap((row) => row.voter ? [row.voter] : []);
+
       const elections = await transaction.$queryRaw<{
         id: string;
         status: ElectionStatus;
@@ -117,9 +145,9 @@ export async function importEligibleVoters(
       const importRecord = await transaction.datasetImport.create({
         data: {
           importedById: admin.id,
-          filename: "voter-registry-roster.xlsx",
+          filename: "voter-names.xlsx",
           status: "VALIDATING",
-          totalRows: rows.length,
+          totalRows: importRows.length,
         },
         select: { id: true },
       });
@@ -127,28 +155,17 @@ export async function importEligibleVoters(
       for (const batch of chunks(acceptedVoters, CHUNK_SIZE)) {
         await transaction.voter.createMany({
           data: batch.map((voter) => {
-            const identity = JSON.stringify([
-              normalizeVoterName(voter.name),
-              normalizePhoneNumber(voter.phone),
-            ]);
+            const identity = normalizeVoterName(voter.name);
             return {
               identificationCiphertext: encryptVoterField(identity, "voter-identity"),
               identificationLookupHash: voter.lookupHash,
               nameCiphertext: encryptVoterField(voter.name, "voter-name"),
-              phoneCiphertext: encryptVoterField(voter.phone, "voter-phone"),
-              emailCiphertext: voter.email
-                ? encryptVoterField(voter.email, "voter-email")
-                : null,
-              departmentCiphertext: voter.department
-                ? encryptVoterField(voter.department, "voter-department")
-                : null,
             };
           }),
           skipDuplicates: true,
         });
       }
 
-      const votersByLookupHash = new Map<string, string>();
       for (const batch of chunks(acceptedVoters, CHUNK_SIZE)) {
         const voters = await transaction.voter.findMany({
           where: {
@@ -159,14 +176,17 @@ export async function importEligibleVoters(
           select: { id: true, identificationLookupHash: true },
         });
         for (const voter of voters) {
-          votersByLookupHash.set(voter.identificationLookupHash, voter.id);
+          voterIdsByNameHash.set(
+            voter.identificationLookupHash,
+            [...(voterIdsByNameHash.get(voter.identificationLookupHash) ?? []), voter.id],
+          );
         }
       }
 
-      const voterIds = acceptedVoters.flatMap((voter) => {
-        const voterId = votersByLookupHash.get(voter.lookupHash);
-        return voterId ? [voterId] : [];
-      });
+      const voterIds = [...new Set(
+        [...new Set(rows.flatMap((row) => row.voter ? [row.voter.lookupHash] : []))]
+          .flatMap((lookupHash) => voterIdsByNameHash.get(lookupHash) ?? []),
+      )];
       for (const electionId of eligibleElectionIds) {
         for (const batch of chunks(voterIds, CHUNK_SIZE)) {
           await transaction.electionVoter.createMany({
@@ -189,7 +209,7 @@ export async function importEligibleVoters(
       }
 
       await transaction.datasetImportRecord.createMany({
-        data: rows.map((row) => ({
+        data: importRows.map((row) => ({
           importId: importRecord.id,
           rowNumber: row.rowNumber,
           status: row.status,
@@ -223,7 +243,12 @@ export async function importEligibleVoters(
           },
         },
       });
-      return eligibleElectionIds.length;
+      return {
+        acceptedRows: acceptedRows.length,
+        rejectedRows,
+        skippedRows,
+        electionsUpdated: eligibleElectionIds.length,
+      };
     }, { maxWait: 10_000, timeout: 60_000 });
     revalidatePath("/admin");
     revalidatePath("/admin/voters");
@@ -231,10 +256,7 @@ export async function importEligibleVoters(
     return {
       error: null,
       result: {
-        acceptedRows: acceptedRows.length,
-        rejectedRows,
-        skippedRows,
-        electionsUpdated,
+        ...result,
       },
     };
   } catch (error) {

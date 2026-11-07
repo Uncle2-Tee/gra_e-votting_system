@@ -80,6 +80,12 @@ export function createVoterIdentityLookupHash(name: string, phone: string) {
     .digest("hex");
 }
 
+export function createVoterNameLookupHash(name: string) {
+  return createHmac("sha256", deriveKey("identity-lookup"))
+    .update(JSON.stringify([normalizeVoterName(name)]), "utf8")
+    .digest("hex");
+}
+
 export function createNominationLookupHash(
   name: string,
   email: string,

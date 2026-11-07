@@ -9,6 +9,7 @@ import {
   Vote,
 } from "lucide-react";
 import AdminElectionCreate from "@/components/admin-election-create";
+import AdminElectionArchiveButton from "@/components/admin-election-archive-button";
 import AdminElectionPositionManager from "@/components/admin-election-position-manager";
 import AdminElectionScheduleEditor from "@/components/admin-election-schedule-editor";
 import AdminNominationReview from "@/components/admin-nomination-review";
@@ -76,8 +77,8 @@ export function AdminElectionsPage({
     <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
       <PageHeading
         eyebrow="Election operations"
-        title="Elections"
-        description="Create elections, review their schedules, and manage voter eligibility."
+        title="Voting setup"
+        description="Choose nomination positions, set voting times, and review current and past schedules."
       />
       <AdminElectionCreate />
       <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
@@ -87,9 +88,9 @@ export function AdminElectionsPage({
               <Vote className="size-[17px]" strokeWidth={1.8} />
             </span>
             <div>
-              <p className="text-xs font-semibold text-slate-900">Election schedule</p>
+              <p className="text-xs font-semibold text-slate-900">Voting schedule</p>
               <p className="mt-0.5 text-[10px] text-slate-500">
-                {schedules.elections.length} {schedules.elections.length === 1 ? "election" : "elections"}
+                {schedules.elections.length} {schedules.elections.length === 1 ? "voting cycle" : "voting cycles"}
               </p>
             </div>
           </div>
@@ -111,9 +112,15 @@ export function AdminElectionsPage({
                   <AdminElectionPositionManager election={election} />
                   <AdminElectionScheduleEditor election={election} />
                 </div>
-                <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
-                  {election.status.replaceAll("_", " ")}
-                </span>
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
+                    {election.status.replaceAll("_", " ")}
+                  </span>
+                  <AdminElectionArchiveButton
+                    electionId={election.id}
+                    title={election.title}
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -136,7 +143,7 @@ export function AdminElectionsPage({
         )}
         <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:px-6">
           <p className="text-[10px] text-slate-500">
-            All elections are listed, with the most recently updated first.
+            Voting schedules are listed with the most recently updated first.
           </p>
         </div>
       </section>
@@ -210,7 +217,7 @@ export function AdminVotersPage({ overview }: { overview: AdminOverview }) {
             </span>
             <h2 className="mt-3 text-sm font-semibold text-slate-900">Manage voter eligibility</h2>
             <p className="mt-1 max-w-md text-xs leading-5 text-slate-600">
-              Import a voter roster to register voters for all current and future elections.
+              Import voter names to register eligible voters for current and future elections.
             </p>
           </div>
           <Link

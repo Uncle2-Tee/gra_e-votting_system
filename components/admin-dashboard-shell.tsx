@@ -25,7 +25,7 @@ const navigationGroups = [
   {
     label: "Election operations",
     items: [
-      { id: "elections", label: "Elections", href: "/admin/elections", icon: Vote },
+      { id: "elections", label: "Voting setup", href: "/admin/elections", icon: Vote },
       { id: "nominations", label: "Nomination review", href: "/admin/nominations", icon: BadgeCheck },
       { id: "voters", label: "Voter registry", href: "/admin/voters", icon: UsersRound },
       { id: "eligibility", label: "Eligibility & imports", href: "/admin/eligibility", icon: FileSpreadsheet },

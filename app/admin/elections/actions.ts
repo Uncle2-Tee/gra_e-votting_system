@@ -15,8 +15,9 @@ import {
 } from "@/lib/election-schedule";
 import { ELECTION_TIMEZONE } from "@/lib/election-timezone";
 import {
-  NOMINATION_POSITION_NAMES,
-  NOMINATION_POSITION_OPTIONS,
+  hasValidPositionNames,
+  MAX_ELECTION_POSITIONS,
+  MAX_POSITION_TITLE_LENGTH,
 } from "@/lib/nomination-positions";
 import { prisma } from "@/lib/prisma";
 
@@ -27,11 +28,11 @@ export type CreateElectionState = {
 
 export type UpdateElectionScheduleState = CreateElectionState;
 export type AddElectionPositionsState = CreateElectionState;
+export type ArchiveElectionState = CreateElectionState;
 
 const INITIAL_STATE: CreateElectionState = { error: null, success: null };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHUNK_SIZE = 500;
-const MAX_POSITIONS = 20;
 
 function chunks<T>(values: T[], size: number) {
   const result: T[][] = [];
@@ -78,56 +79,58 @@ export async function createElection(
     redirect("/admin/login");
   }
   if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
-    return { ...INITIAL_STATE, error: "You are not authorized to create elections." };
+    return { ...INITIAL_STATE, error: "You are not authorized to configure voting." };
   }
 
-  const title = readText(formData, "title").normalize("NFKC");
-  const description = readText(formData, "description").normalize("NFKC");
   const positions = formData
     .getAll("positions")
     .filter((value): value is string => typeof value === "string")
     .map((position) => position.trim().normalize("NFKC"));
+  const intent = readText(formData, "intent") || "schedule-vote";
+  if (intent !== "publish-positions" && intent !== "schedule-vote") {
+    return { ...INITIAL_STATE, error: "Choose whether to publish positions or schedule voting." };
+  }
+  const publishPositionsOnly = intent === "publish-positions";
   const startsAtValue = readText(formData, "startsAt");
   const endsAtValue = readText(formData, "endsAt");
 
-  if (title.length < 3 || title.length > 120) {
-    return {
-      ...INITIAL_STATE,
-      error: "Enter an election title between 3 and 120 characters.",
-    };
-  }
-  if (description.length > 2000) {
-    return {
-      ...INITIAL_STATE,
-      error: "The election description must be 2,000 characters or fewer.",
-    };
-  }
   if (
-    positions.length === 0 ||
-    positions.length > NOMINATION_POSITION_OPTIONS.length ||
-    positions.some((position) => !NOMINATION_POSITION_NAMES.has(position)) ||
-    new Set(positions.map((position) => position.toLocaleLowerCase("en"))).size !== positions.length
+    !hasValidPositionNames(positions)
   ) {
     return {
       ...INITIAL_STATE,
-      error: "Select one or more available nomination positions without duplicates.",
+      error: `Enter 1 to ${MAX_ELECTION_POSITIONS} unique position names, each ${MAX_POSITION_TITLE_LENGTH} characters or fewer.`,
     };
   }
 
-  const startsAt = parseElectionDateTime(startsAtValue, ELECTION_TIMEZONE);
-  const endsAt = parseElectionDateTime(endsAtValue, ELECTION_TIMEZONE);
-  if (!startsAt || !endsAt) {
-    return { ...INITIAL_STATE, error: "Enter valid voting opening and closing times." };
+  let startsAt: Date | null = null;
+  let endsAt: Date | null = null;
+  if (!publishPositionsOnly) {
+    startsAt = parseElectionDateTime(startsAtValue, ELECTION_TIMEZONE);
+    endsAt = parseElectionDateTime(endsAtValue, ELECTION_TIMEZONE);
+    if (!startsAt || !endsAt) {
+      return { ...INITIAL_STATE, error: "Enter valid voting opening and closing times." };
+    }
+    if (startsAt <= new Date()) {
+      return { ...INITIAL_STATE, error: "The voting opening time must be in the future." };
+    }
+    if (endsAt <= startsAt) {
+      return {
+        ...INITIAL_STATE,
+        error: "The voting closing time must be after its opening time.",
+      };
+    }
   }
-  if (startsAt <= new Date()) {
-    return { ...INITIAL_STATE, error: "The voting opening time must be in the future." };
-  }
-  if (endsAt <= startsAt) {
-    return {
-      ...INITIAL_STATE,
-      error: "The voting closing time must be after its opening time.",
-    };
-  }
+  const votingStartsAt = startsAt ?? new Date();
+  const cycleLabel = new Intl.DateTimeFormat("en", {
+    timeZone: ELECTION_TIMEZONE,
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(votingStartsAt);
+  const title = publishPositionsOnly
+    ? `GRA Election - Nominations ${cycleLabel}`
+    : `GRA Election - ${cycleLabel}`;
+  const initialStatus = publishPositionsOnly ? "DRAFT" : "SCHEDULED";
 
   try {
     await prisma.$transaction(async (transaction) => {
@@ -137,11 +140,10 @@ export async function createElection(
       const created = await transaction.election.create({
         data: {
           title,
-          description: description || null,
           timezone: ELECTION_TIMEZONE,
           startsAt,
           endsAt,
-          status: "SCHEDULED",
+          status: initialStatus,
           createdById: admin.id,
         },
         select: { id: true },
@@ -176,20 +178,30 @@ export async function createElection(
           action: "ELECTION_CREATED",
           entityType: "ELECTION",
           entityId: created.id,
-          outcome: "SCHEDULED",
+          outcome: initialStatus,
           metadata: {
             timezone: ELECTION_TIMEZONE,
-            startsAt: startsAt.toISOString(),
-            endsAt: endsAt.toISOString(),
+            startsAt: startsAt?.toISOString() ?? null,
+            endsAt: endsAt?.toISOString() ?? null,
+            positions,
           },
         },
       });
     });
 
     revalidateElectionSchedule();
+    if (publishPositionsOnly) {
+      return {
+        error: null,
+        success: "Nomination positions are published. Candidates can now apply and be reviewed before voting is scheduled.",
+      };
+    }
+    if (!startsAt || !endsAt) {
+      return { ...INITIAL_STATE, error: "Enter valid voting opening and closing times." };
+    }
     return {
       error: null,
-      success: `“${title}” was scheduled to open on ${startsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} and close on ${endsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} (${ELECTION_TIMEZONE}).`,
+      success: `Voting is scheduled to open on ${startsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} and close on ${endsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} (${ELECTION_TIMEZONE}). The selected positions are available for nominations.`,
     };
   } catch (error) {
     logElectionActionFailure("Election creation failed.", error);
@@ -233,14 +245,11 @@ export async function addElectionPositions(
     .filter((value): value is string => typeof value === "string")
     .map((position) => position.trim().normalize("NFKC"));
   if (
-    positions.length === 0 ||
-    positions.length > NOMINATION_POSITION_OPTIONS.length ||
-    positions.some((position) => !NOMINATION_POSITION_NAMES.has(position)) ||
-    new Set(positions.map((position) => position.toLocaleLowerCase("en"))).size !== positions.length
+    !hasValidPositionNames(positions)
   ) {
     return {
       ...INITIAL_STATE,
-      error: "Select available nomination positions without duplicates.",
+      error: `Enter 1 to ${MAX_ELECTION_POSITIONS} unique position names, each ${MAX_POSITION_TITLE_LENGTH} characters or fewer.`,
     };
   }
 
@@ -260,10 +269,10 @@ export async function addElectionPositions(
         where: { electionId },
         select: { title: true, displayOrder: true },
       });
-      if (existingPositions.length + positions.length > MAX_POSITIONS) {
+      if (existingPositions.length + positions.length > MAX_ELECTION_POSITIONS) {
         return {
           added: 0,
-          error: `An election can have at most ${MAX_POSITIONS} positions.`,
+          error: `An election can have at most ${MAX_ELECTION_POSITIONS} positions.`,
         };
       }
 
@@ -400,9 +409,10 @@ export async function updateElectionSchedule(
         return { error: "The voting closing time must be after its opening time." };
       }
 
+      const nextStatus: ElectionStatus = status === "DRAFT" ? "SCHEDULED" : status;
       const updated = await transaction.election.update({
         where: { id: electionId },
-        data: { startsAt, endsAt, status },
+        data: { startsAt, endsAt, status: nextStatus },
         select: { title: true },
       });
 
@@ -412,7 +422,7 @@ export async function updateElectionSchedule(
           action: "ELECTION_SCHEDULE_UPDATED",
           entityType: "ELECTION",
           entityId: electionId,
-          outcome: "UPDATED",
+          outcome: nextStatus,
           metadata: {
             timezone: election.timezone,
             previousStartsAt: election.startsAt?.toISOString() ?? null,
@@ -428,7 +438,7 @@ export async function updateElectionSchedule(
         startsAt,
         endsAt,
         timezone: election.timezone,
-        status,
+        status: nextStatus,
       };
     });
 
@@ -450,6 +460,97 @@ export async function updateElectionSchedule(
     return {
       ...INITIAL_STATE,
       error: "The election schedule could not be updated. Please try again.",
+    };
+  }
+}
+
+export async function archiveElection(
+  electionId: string,
+  _previousState: ArchiveElectionState,
+  _formData: FormData,
+): Promise<ArchiveElectionState> {
+  void _previousState;
+  void _formData;
+
+  let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
+  try {
+    admin = await getCurrentAdmin();
+  } catch (error) {
+    if (!isAdminDatabaseUnavailableError(error)) {
+      throw error;
+    }
+    return {
+      ...INITIAL_STATE,
+      error: "Elections cannot be archived right now because the database is unavailable.",
+    };
+  }
+
+  if (!admin) {
+    redirect("/admin/login");
+  }
+  if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
+    return { ...INITIAL_STATE, error: "You are not authorized to archive elections." };
+  }
+  if (!UUID_PATTERN.test(electionId)) {
+    return { ...INITIAL_STATE, error: "The selected election is invalid." };
+  }
+
+  try {
+    await synchronizeElectionStatuses();
+    const result = await prisma.$transaction(async (transaction) => {
+      const [election] = await transaction.$queryRaw<{
+        id: string;
+        title: string;
+        status: ElectionStatus;
+        startsAt: Date | null;
+        endsAt: Date | null;
+      }[]>`
+        SELECT "id", "title", "status", "startsAt", "endsAt"
+        FROM "Election"
+        WHERE "id" = ${electionId}::uuid
+        FOR UPDATE
+      `;
+
+      if (!election) {
+        return { error: "The selected election could not be found." };
+      }
+      if (election.status === "ARCHIVED") {
+        return { error: "This election has already been archived." };
+      }
+      const currentStatus = getEffectiveElectionStatus(election);
+      if (currentStatus === "OPEN") {
+        return { error: "An election cannot be archived while voting is open." };
+      }
+
+      await transaction.election.update({
+        where: { id: electionId },
+        data: { status: "ARCHIVED" },
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "ELECTION_ARCHIVED",
+          entityType: "ELECTION",
+          entityId: electionId,
+          outcome: "ARCHIVED",
+          metadata: { previousStatus: currentStatus },
+        },
+      });
+
+      return { title: election.title };
+    });
+
+    if ("error" in result && typeof result.error === "string") {
+      return { ...INITIAL_STATE, error: result.error };
+    }
+
+    revalidateElectionSchedule();
+    return { error: null, success: `“${result.title}” was archived.` };
+  } catch (error) {
+    logElectionActionFailure("Election archive failed.", error);
+    return {
+      ...INITIAL_STATE,
+      error: "The election could not be archived. Please try again.",
     };
   }
 }

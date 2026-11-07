@@ -22,7 +22,7 @@ export default function PasswordInput({
       />
       <button
         type="button"
-        className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center rounded-r-lg text-slate-400 transition hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="absolute inset-y-0 right-0 inline-flex w-10 translate-y-0.5 items-center justify-center rounded-r-lg text-slate-400 transition hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label={visible ? "Hide password" : "Show password"}
         aria-pressed={visible}
         disabled={disabled}

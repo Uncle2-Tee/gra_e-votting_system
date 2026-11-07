@@ -57,6 +57,7 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
   try {
     await synchronizeElectionStatuses();
     const elections = await prisma.election.findMany({
+      where: { status: { not: "ARCHIVED" } },
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
@@ -115,6 +116,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
         where: { electionVoter: { status: "ELIGIBLE" } },
       }),
       prisma.election.findMany({
+        where: { status: { not: "ARCHIVED" } },
         orderBy: { updatedAt: "desc" },
         take: 5,
         select: {

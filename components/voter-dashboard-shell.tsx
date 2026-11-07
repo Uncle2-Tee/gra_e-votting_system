@@ -139,7 +139,7 @@ export default function VoterDashboardShell({
 
         {children}
 
-        <footer className="mt-auto border-t border-slate-200 bg-white px-4 py-5 sm:px-8">
+        <footer className="mt-auto border-t border-slate-200 bg-white px-4 py-5 sm:px-8 lg:hidden">
           <div className="mx-auto flex max-w-[1500px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-bold text-slate-900">GRA-HOTSC</p>

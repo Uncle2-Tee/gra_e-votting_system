@@ -4,6 +4,18 @@ export const NOMINATION_POSITION_OPTIONS = [
   "Secretary",
 ] as const;
 
-export const NOMINATION_POSITION_NAMES: ReadonlySet<string> = new Set(
-  NOMINATION_POSITION_OPTIONS,
-);
+export const MAX_ELECTION_POSITIONS = 20;
+export const MAX_POSITION_TITLE_LENGTH = 100;
+
+export function hasValidPositionNames(positions: string[]) {
+  return (
+    positions.length > 0 &&
+    positions.length <= MAX_ELECTION_POSITIONS &&
+    positions.every(
+      (position) =>
+        position.length > 0 && position.length <= MAX_POSITION_TITLE_LENGTH,
+    ) &&
+    new Set(positions.map((position) => position.toLocaleLowerCase("en"))).size ===
+      positions.length
+  );
+}

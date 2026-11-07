@@ -185,8 +185,7 @@ export default function NominationApplicationForm({
               Start a nomination
             </h3>
             <p className="mt-1 text-sm leading-5 text-slate-500">
-              Choose an available position and tell voters what you hope to
-              contribute.
+              Choose an available position and submit your details for administrator review.
             </p>
           </div>
         </div>
@@ -229,22 +228,14 @@ export default function NominationApplicationForm({
               <option value="" disabled>
                 Select a position
               </option>
-              {[...new Set(positions.map((position) => position.electionTitle))].map(
-                (electionTitle) => (
-                  <optgroup key={electionTitle} label={electionTitle}>
-                    {positions
-                      .filter((position) => position.electionTitle === electionTitle)
-                      .map((position) => (
-                        <option key={position.id} value={position.id}>
-                          {position.title}
-                        </option>
-                      ))}
-                  </optgroup>
-                ),
-              )}
+              {positions.map((position) => (
+                <option key={position.id} value={position.id}>
+                  {position.title}
+                </option>
+              ))}
             </select>
             <span className="mt-1.5 block text-[11px] leading-4 text-slate-500">
-              Available positions are grouped by election.
+              Select the position you are applying for.
             </span>
           </label>
           <label className="text-xs font-medium text-slate-700">
@@ -277,22 +268,6 @@ export default function NominationApplicationForm({
 
         <ProfilePhotoUpload disabled={disabled} />
 
-        <label className="mt-4 block text-xs font-medium text-slate-700">
-          Candidate statement
-          <textarea
-            className="mt-1.5 min-h-32 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 disabled:bg-slate-50"
-            name="biography"
-            required
-            minLength={30}
-            maxLength={1200}
-            disabled={disabled}
-            placeholder="e.g. I have served our community for five years and will focus on transparent communication and practical improvements."
-          />
-          <span className="mt-1 block text-[11px] text-slate-400">
-            30–1,200 characters. Keep it clear, relevant, and respectful.
-          </span>
-        </label>
-
         <label className="mt-4 flex items-start gap-2.5 text-xs leading-5 text-slate-600">
           <input
             className="mt-1 size-4 shrink-0 accent-emerald-800"
@@ -304,8 +279,7 @@ export default function NominationApplicationForm({
           <span>
             I agree that election administrators may use these details to
             contact me and review my nomination. If approved, I understand
-            that my name, candidate statement, and profile photo (if provided)
-            will be shown to voters.
+            that my name and profile photo (if provided) will be shown to voters.
           </span>
         </label>
 
@@ -348,7 +322,7 @@ export default function NominationApplicationForm({
         <ol className="mt-4 space-y-4">
           {[
             ["01", "Choose a form", "Select an available position for a scheduled election."],
-            ["02", "Submit your details", "An administrator will review your statement and contact details."],
+            ["02", "Submit your details", "An administrator will review your contact details and eligibility."],
             ["03", "Wait for approval", "Only approved nominee profiles are shown in the voter portal."],
           ].map(([number, title, description]) => (
             <li key={number} className="flex gap-3">
@@ -364,12 +338,6 @@ export default function NominationApplicationForm({
             </li>
           ))}
         </ol>
-        <p className="mt-5 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-[11px] leading-5 text-amber-900">
-          Contact details are encrypted and visible only to administrators.
-          Identity is not verified on this form, so administrators must
-          independently verify each applicant before approval. Ballot submission
-          is not enabled.
-        </p>
       </aside>
     </div>
   );

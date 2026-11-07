@@ -30,7 +30,7 @@ async function AdminLoginContent() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#f7f8f6] px-4 py-8 text-slate-900 sm:px-5 sm:py-12">
-      <section className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.05)] sm:p-9">
+      <section className="w-full max-w-md rounded-2xl border-2 border-emerald-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.05)] sm:p-9">
         <BrandLogo variant="lockup" priority className="mx-auto size-32 object-contain sm:size-36" />
         <p className="mt-5 text-center text-xs font-semibold tracking-[0.15em] text-emerald-700 uppercase">
           GRA E-Voting

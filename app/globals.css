@@ -140,7 +140,12 @@
 
 @media (max-width: 1023px) {
   html {
+    overflow-x: clip;
     scrollbar-width: none;
+  }
+
+  body {
+    overflow-x: clip;
   }
 
   html::-webkit-scrollbar {

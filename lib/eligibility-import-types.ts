@@ -4,9 +4,6 @@ export type EligibilityImportRowResult = {
   errorCodes: string[];
   voter?: {
     name: string;
-    phone: string;
-    email: string | null;
-    department: string | null;
     lookupHash: string;
   };
 };

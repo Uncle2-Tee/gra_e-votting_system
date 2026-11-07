@@ -20,6 +20,7 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
     await synchronizeElectionStatuses();
     const [positions, candidates] = await Promise.all([
       prisma.position.findMany({
+        where: { election: { status: { not: "ARCHIVED" } } },
         orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
         select: {
           id: true,
@@ -106,7 +107,7 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
               id: true,
               title: true,
               candidates: {
-                where: { status: "APPROVED" },
+                where: { status: { in: ["APPROVED", "INACTIVE"] } },
                 select: { id: true, nameCiphertext: true },
               },
             },
