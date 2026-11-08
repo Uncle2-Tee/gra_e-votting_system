@@ -5,12 +5,12 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { sendArkeselSms } from "@/lib/arkesel-sms";
 import {
   createVoterCredentialDigest,
   createVoterNameLookupHash,
   createVoterPhoneLookupHash,
   decryptVoterField,
-  normalizePhoneNumber,
 } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
 import { getVoterCredentialCookieName } from "@/lib/voter-ballot-session";
@@ -30,37 +30,11 @@ function validId(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function arkeselRecipient(phone: string) {
-  const digits = normalizePhoneNumber(phone).replace(/\D/g, "");
-  if (/^0\d{9}$/.test(digits)) {
-    return `233${digits.slice(1)}`;
-  }
-  return digits;
-}
-
 async function sendVoterId(phone: string, electionTitle: string, voterId: string) {
-  const apiKey = process.env.ARKESEL_API_KEY;
-  const sender = process.env.ARKESEL_SENDER_ID;
-  if (!apiKey || !sender) {
-    throw new Error("Arkesel is not configured.");
-  }
-
-  const response = await fetch("https://sms.arkesel.com/api/v2/sms/send", {
-    method: "POST",
-    headers: {
-      "api-key": apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      sender,
-      message: `${electionTitle}: your GRA E-Voting ID is ${voterId}. Keep it private; use it once for each position.`,
-      recipients: [arkeselRecipient(phone)],
-    }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) {
-    throw new Error(`Arkesel rejected the SMS request (${response.status}).`);
-  }
+  await sendArkeselSms(
+    [phone],
+    `${electionTitle}: your GRA E-Voting ID is ${voterId}. Keep it private; use it once for each position.`,
+  );
 }
 
 export async function requestVoterId(

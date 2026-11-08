@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { connection } from "next/server";
 import {
   decryptVoterField,
@@ -13,69 +13,120 @@ import type {
   VoterPortalData,
 } from "@/lib/nomination-types";
 
+const RETRYABLE_DATABASE_ERROR_CODES = new Set([
+  "P1001",
+  "P1002",
+  "P1008",
+  "P1017",
+  "P2024",
+]);
+const MAX_VOTER_PORTAL_DATABASE_ATTEMPTS = 4;
+
+function getDatabaseErrorCode(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code;
+  }
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    const messageCode = error.message.match(/\bP\d{4}\b/)?.[0];
+    return messageCode ??
+      (error.errorCode && error.errorCode !== "UNEXPECTED"
+        ? error.errorCode
+        : "INITIALIZATION");
+  }
+  return typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+    ? error.code
+    : "UNKNOWN";
+}
+
+function isRetryableDatabaseError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
+  return RETRYABLE_DATABASE_ERROR_CODES.has(getDatabaseErrorCode(error));
+}
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 export async function getVoterPortalData(): Promise<VoterPortalData> {
   await connection();
 
-  try {
-    await synchronizeElectionStatuses();
-    const [positions, candidates] = await Promise.all([
-      prisma.position.findMany({
-        where: { election: { status: { not: "ARCHIVED" } } },
-        orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
-        select: {
-          id: true,
-          title: true,
-          election: { select: { title: true } },
-        },
-      }),
-      prisma.candidate.findMany({
-        where: {
-          status: "APPROVED",
-        },
-        orderBy: [
-          { election: { startsAt: "asc" } },
-          { position: { displayOrder: "asc" } },
-          { createdAt: "asc" },
-        ],
-        select: {
-          id: true,
-          nameCiphertext: true,
-          biography: true,
-          photoData: true,
-          photoMimeType: true,
-          position: { select: { title: true } },
-          election: { select: { title: true } },
-        },
-      }),
-    ]);
+  for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
+    try {
+      await synchronizeElectionStatuses();
+      const [positions, candidates] = await Promise.all([
+        prisma.position.findMany({
+          where: { election: { status: { not: "ARCHIVED" } } },
+          orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
+          select: {
+            id: true,
+            title: true,
+            election: { select: { title: true } },
+          },
+        }),
+        prisma.candidate.findMany({
+          where: {
+            status: "APPROVED",
+          },
+          orderBy: [
+            { election: { startsAt: "asc" } },
+            { position: { displayOrder: "asc" } },
+            { createdAt: "asc" },
+          ],
+          select: {
+            id: true,
+            nameCiphertext: true,
+            biography: true,
+            photoData: true,
+            photoMimeType: true,
+            position: { select: { title: true } },
+            election: { select: { title: true } },
+          },
+        }),
+      ]);
 
-    return {
-      databaseStatus: "connected",
-      positions: positions.map((position) => ({
-        id: position.id,
-        title: position.title,
-        electionTitle: position.election.title,
-      })),
-      nominees: candidates.map((candidate) => ({
-        id: candidate.id,
-        name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
-        biography: candidate.biography,
-        photoUrl:
-          candidate.photoData && candidate.photoMimeType === "image/webp"
-            ? `/admin/candidates/${candidate.id}/photo`
-            : null,
-        positionTitle: candidate.position.title,
-        electionTitle: candidate.election.title,
-      })),
-    };
-  } catch (error) {
-    logNominationDataError("voter portal", error);
-    return {
-      databaseStatus: "unavailable",
-      positions: [],
-      nominees: [],
-    };
+      return {
+        databaseStatus: "connected",
+        positions: positions.map((position) => ({
+          id: position.id,
+          title: position.title,
+          electionTitle: position.election.title,
+        })),
+        nominees: candidates.map((candidate) => ({
+          id: candidate.id,
+          name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
+          biography: candidate.biography,
+          photoUrl:
+            candidate.photoData && candidate.photoMimeType === "image/webp"
+              ? `/admin/candidates/${candidate.id}/photo`
+              : null,
+          positionTitle: candidate.position.title,
+          electionTitle: candidate.election.title,
+        })),
+      };
+    } catch (error) {
+      if (
+        attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 &&
+        isRetryableDatabaseError(error)
+      ) {
+        await delay(300 * (attempt + 1));
+        continue;
+      }
+
+      logNominationDataError("voter portal", error, attempt + 1);
+      return {
+        databaseStatus: "unavailable",
+        positions: [],
+        nominees: [],
+      };
+    }
   }
+
+  throw new Error("Voter portal data retries ended unexpectedly.");
 }
 
 export async function getVoterResultsData(): Promise<VoterResultsData> {
@@ -273,16 +324,10 @@ function mapAdminNomination(application: {
   };
 }
 
-function logNominationDataError(scope: string, error: unknown) {
-  const errorCode =
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof error.code === "string"
-      ? error.code
-      : "UNKNOWN";
-  console.error(`Could not load ${scope} nomination data.`, {
-    errorName: error instanceof Error ? error.name : "UnknownError",
-    errorCode,
-  });
+function logNominationDataError(scope: string, error: unknown, attempts = 1) {
+  const errorCode = getDatabaseErrorCode(error);
+  const errorName = error instanceof Error ? error.name : "UnknownError";
+  console.error(
+    `Could not load ${scope} nomination data. errorName=${errorName} errorCode=${errorCode} attempts=${attempts}`,
+  );
 }

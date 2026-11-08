@@ -25,7 +25,7 @@ function PageHeading({
 }: {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
 }) {
   return (
     <div>
@@ -35,9 +35,11 @@ function PageHeading({
       <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[30px]">
         {title}
       </h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-        {description}
-      </p>
+      {description ? (
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+          {description}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -526,7 +528,6 @@ export default function VotersPortal({
             <PageHeading
               eyebrow="Voter services"
               title="Election overview"
-              description="Explore candidates and nomination opportunities from your voter dashboard."
             />
           </div>
           <Overview data={data} />

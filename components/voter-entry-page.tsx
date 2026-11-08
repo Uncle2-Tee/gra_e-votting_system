@@ -33,9 +33,7 @@ export default function VoterEntryPage({
         <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
           Start voting
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Verify your voter-roster details to receive your election ID by SMS. Then enter that ID on your ballot to vote for each position.
-        </p>
+       
       </header>
 
       <div className="grid gap-5">
@@ -143,11 +141,6 @@ export default function VoterEntryPage({
                   />
                 </label>
               </div>
-
-              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-3 text-[11px] leading-5 text-slate-600">
-                If your phone number is missing or incorrect in the roster, contact the election administrator before requesting an ID.
-              </p>
-
               {state.error ? (
                 <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-800">
                   {state.error}
