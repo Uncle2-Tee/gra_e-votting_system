@@ -41,17 +41,17 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
                     <Icon className="size-4" strokeWidth={1.8} />
                   </span>
                 </div>
-                <p className={`mt-4 break-words text-[26px] leading-none font-semibold tracking-tight sm:mt-5 ${
-                  overview.stats ? "text-slate-950" : "text-red-700"
-                }`}>
+                <p className="mt-4 break-words text-[26px] leading-none font-semibold tracking-tight text-slate-950 sm:mt-5">
                   {overview.stats
                     ? value === "turnoutPercentage"
                       ? `${overview.stats.turnoutPercentage}%`
                       : overview.stats[value]
-                    : "Unavailable"}
+                    : value === "turnoutPercentage"
+                      ? "0%"
+                      : 0}
                   <span className="mt-2 block break-words text-[10px] leading-4 font-normal tracking-normal text-slate-400 sm:text-[11px]">
                     {value === "turnoutPercentage"
-                      ? `${overview.stats?.participants ?? "—"} participants across eligible election assignments`
+                      ? `${overview.stats?.participants ?? 0} participants across eligible election assignments`
                       : "Current database total"}
                   </span>
                 </p>

@@ -8,7 +8,6 @@ import {
   ChartNoAxesCombined,
   FilePlus2,
   LayoutDashboard,
-  LockKeyhole,
   Menu,
   X,
 } from "lucide-react";
@@ -75,16 +74,7 @@ export default function VoterDashboardShell({
         </nav>
 
         <div className="mt-auto shrink-0 border-t border-slate-100 p-4">
-          <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3.5">
-            <div className="flex items-center gap-2 text-amber-900">
-              <LockKeyhole className="size-3.5" />
-              <p className="text-[10px] font-semibold">Voting is not open</p>
-            </div>
-            <p className="mt-1.5 text-[10px] leading-4 text-amber-900/75">
-              Secure voter verification and ballot privacy review are still required.
-            </p>
-          </div>
-          <p className="mt-4 px-1 text-[9px] text-slate-400">GRA E-Voting · Voter services</p>
+          <p className="px-1 text-[9px] text-slate-400">GRA E-Voting · Voter services</p>
         </div>
       </aside>
 

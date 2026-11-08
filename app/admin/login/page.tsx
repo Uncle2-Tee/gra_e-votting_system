@@ -29,27 +29,28 @@ async function AdminLoginContent() {
   const securityConfigured = isAdminSecurityConfigured();
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#f7f8f6] px-4 py-8 text-slate-900 sm:px-5 sm:py-12">
-      <section className="w-full max-w-md rounded-2xl border-2 border-emerald-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.05)] sm:p-9">
-        <BrandLogo variant="lockup" priority className="mx-auto size-32 object-contain sm:size-36" />
-        <p className="mt-5 text-center text-xs font-semibold tracking-[0.15em] text-emerald-700 uppercase">
-          GRA E-Voting
-        </p>
-        <h1 className="mt-2 text-center text-xl font-semibold tracking-tight text-slate-950">
-          Administrator sign in
-        </h1>
-        <p className="mt-2 text-center text-sm leading-6 text-slate-500">
-          Sign in with an authorized administrator account to continue.
-        </p>
+    <main className="flex min-h-dvh items-center justify-center bg-[#f7f8f6] px-4 py-5 text-slate-900 sm:px-5 sm:py-8">
+      <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/[0.06] sm:p-6">
+        <div className="flex flex-col items-center text-center">
+          <BrandLogo priority className="size-14 object-contain" />
+          <div className="min-w-0">
+            <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
+              Administrator
+            </h1>
+            <p className="mt-1 text-sm leading-5 text-slate-500">
+              Enter your credentials to continue.
+            </p>
+          </div>
+        </div>
         {databaseUnavailable && (
-          <div role="alert" className="mt-5 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+          <div role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
             Administrator sign-in is temporarily unavailable because the
             database connection could not be reached. Try again when the
             database is available.
           </div>
         )}
         {!securityConfigured && (
-          <div className="mt-5 flex items-start gap-2 rounded-lg bg-amber-50 p-3">
+          <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
             <LockKeyhole className="mt-0.5 size-4 shrink-0 text-amber-700" />
             <p className="text-xs leading-5 text-amber-900">
               Configure SESSION_SECRET, APP_ENCRYPTION_KEY, ADMIN_USERNAME, and
@@ -57,7 +58,9 @@ async function AdminLoginContent() {
             </p>
           </div>
         )}
-        <AdminLoginForm disabled={!securityConfigured || databaseUnavailable} />
+        <div className="mt-5">
+          <AdminLoginForm disabled={!securityConfigured || databaseUnavailable} />
+        </div>
       </section>
     </main>
   );

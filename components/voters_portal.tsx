@@ -361,7 +361,7 @@ function Overview({ data }: { data: VoterPortalData }) {
           </Link>
         </article>
 
-        <aside className="rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 transition duration-200 hover:shadow-md sm:p-6">
+        <aside className="hidden rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 transition duration-200 hover:shadow-md sm:block sm:p-6">
           <span className="flex size-10 items-center justify-center rounded-xl bg-white text-emerald-800 ring-1 ring-emerald-900/10">
             <ShieldCheck className="size-5" />
           </span>

@@ -207,6 +207,7 @@ export async function createAdminSession(userId: string) {
     sameSite: "strict",
     path: "/admin",
     expires: expiresAt,
+    maxAge: SESSION_LIFETIME_MS / 1000,
   });
 }
 

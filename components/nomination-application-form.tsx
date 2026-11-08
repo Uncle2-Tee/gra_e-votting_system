@@ -96,9 +96,6 @@ function ProfilePhotoUpload({ disabled }: { disabled: boolean }) {
             <span className="block text-xs font-semibold text-slate-800">
               {selectedFile ? "Change profile photo" : "Upload a profile photo"}
             </span>
-            <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
-              Choose an image from your device
-            </span>
           </span>
           <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700">
             Browse files
@@ -198,7 +195,7 @@ export default function NominationApplicationForm({
           >
             {unavailable
               ? "Available positions are temporarily unavailable because election data could not be loaded."
-              : "No nomination positions have been configured yet. Contact the administrator to add positions."}
+              : "Nominations are not available right now. Administrators can publish nomination positions for upcoming elections."}
           </p>
         ) : null}
 

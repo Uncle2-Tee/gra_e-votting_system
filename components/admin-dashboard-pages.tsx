@@ -9,7 +9,7 @@ import {
   Vote,
 } from "lucide-react";
 import AdminElectionCreate from "@/components/admin-election-create";
-import AdminElectionArchiveButton from "@/components/admin-election-archive-button";
+import AdminElectionDeleteButton from "@/components/admin-election-delete-button";
 import AdminElectionPositionManager from "@/components/admin-election-position-manager";
 import AdminElectionScheduleEditor from "@/components/admin-election-schedule-editor";
 import AdminNominationReview from "@/components/admin-nomination-review";
@@ -116,10 +116,12 @@ export function AdminElectionsPage({
                   <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
                     {election.status.replaceAll("_", " ")}
                   </span>
-                  <AdminElectionArchiveButton
-                    electionId={election.id}
-                    title={election.title}
-                  />
+                  {election.status === "SCHEDULED" ? (
+                    <AdminElectionDeleteButton
+                      electionId={election.id}
+                      title={election.title}
+                    />
+                  ) : null}
                 </div>
               </li>
             ))}
@@ -202,8 +204,8 @@ export function AdminVotersPage({ overview }: { overview: AdminOverview }) {
               <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
                 <Icon className="size-[17px]" strokeWidth={1.8} />
               </span>
-              <p className={`mt-4 text-2xl font-semibold tracking-tight ${value === undefined ? "text-red-700" : "text-slate-950"}`}>
-                {value ?? "Unavailable"}
+              <p className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">
+                {value ?? 0}
               </p>
               <h2 className="mt-1 text-xs font-semibold text-slate-800">{label}</h2>
               <p className="mt-1 text-[10px] leading-4 text-slate-500">{description}</p>

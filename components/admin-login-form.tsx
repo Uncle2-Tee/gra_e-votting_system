@@ -10,12 +10,12 @@ export default function AdminLoginForm({ disabled = false }: { disabled?: boolea
   const [state, action, pending] = useActionState(loginAdmin, initialState);
 
   return (
-    <form action={action} className="mt-6 space-y-4">
+    <form action={action} aria-label="Administrator credentials" className="space-y-4">
       <label className="block text-left text-xs font-medium text-slate-700">
         Administrator username
         <input
           autoComplete="username"
-          className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+          className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 disabled:cursor-not-allowed disabled:bg-slate-50"
           name="username"
           required
           disabled={disabled}
@@ -26,7 +26,7 @@ export default function AdminLoginForm({ disabled = false }: { disabled?: boolea
         Password
         <PasswordInput
           autoComplete="current-password"
-          className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+          className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 disabled:cursor-not-allowed disabled:bg-slate-50"
           name="password"
           required
           disabled={disabled}
@@ -39,7 +39,7 @@ export default function AdminLoginForm({ disabled = false }: { disabled?: boolea
         </p>
       )}
       <button
-        className="h-11 w-full rounded-lg bg-emerald-800 text-sm font-semibold text-white transition-colors hover:bg-emerald-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         disabled={pending || disabled}
         type="submit"
       >
