@@ -181,9 +181,6 @@ export default function NominationApplicationForm({
             <h3 className="text-base font-semibold tracking-tight text-slate-950">
               Start a nomination
             </h3>
-            <p className="mt-1 text-sm leading-5 text-slate-500">
-              Choose a position and submit your details for administrator review. Multiple candidates may apply for the same position.
-            </p>
           </div>
         </div>
 

@@ -78,7 +78,6 @@ export function AdminElectionsPage({
       <PageHeading
         eyebrow="Election operations"
         title="Voting setup"
-        description="Choose nomination positions, set voting times, and review current and past schedules."
       />
       <AdminElectionCreate />
       <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
@@ -163,7 +162,6 @@ export function AdminNominationsPage({
       <PageHeading
         eyebrow="Election operations"
         title="Nomination review"
-        description="Review applications, verify nominee details, and record approval decisions."
       />
       <AdminNominationReview
         applications={data.applications}

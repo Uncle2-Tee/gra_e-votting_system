@@ -26,9 +26,6 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
               <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[30px]">
                 System overview
               </h1>
-              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">
-                Manage the complete election lifecycle and organization-wide system operations from one control center.
-              </p>
             </div>
           </div>
 

@@ -5,7 +5,6 @@ import {
   ChartNoAxesCombined,
   CheckCircle2,
   ClipboardCheck,
-  Clock3,
   LockKeyhole,
   ShieldCheck,
   UsersRound,
@@ -141,15 +140,8 @@ export function ElectionResultsPanel({
         <PageHeading
           eyebrow="Election results"
           title="Results & reports"
-          description="Follow vote totals while voting is underway and see the final results and winners after polls close."
         />
       ) : null}
-      <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-slate-500">
-        <Clock3 className="size-3.5" />
-        {liveResults
-          ? "Live totals refresh every 10 seconds while voting is open."
-          : "Final results and winners are available after voting closes."}
-      </p>
       {data.databaseStatus === "unavailable" ? (
         <div role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Election results are temporarily unavailable. Please try again later.
@@ -540,7 +532,6 @@ export default function VotersPortal({
             <PageHeading
               eyebrow="Candidate directory"
               title="Approved nominees"
-              description="Get to know the candidates approved by election administrators."
             />
             <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-emerald-900 shadow-sm">
               <BadgeCheck className="size-4 text-emerald-700" />
@@ -556,7 +547,6 @@ export default function VotersPortal({
           <PageHeading
             eyebrow="Candidate applications"
             title="Nomination form"
-            description="Choose an available position and submit your details for administrator review."
           />
           <div className="mt-6">
             <NominationApplicationForm
