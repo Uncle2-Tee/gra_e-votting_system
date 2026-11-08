@@ -17,7 +17,11 @@ function getDatabaseErrorCode(error: unknown) {
     return error.code;
   }
   if (error instanceof Prisma.PrismaClientInitializationError) {
-    return error.errorCode ?? error.message.match(/\bP\d{4}\b/)?.[0] ?? null;
+    const messageCode = error.message.match(/\bP\d{4}\b/)?.[0];
+    return messageCode ??
+      (error.errorCode && error.errorCode !== "UNEXPECTED"
+        ? error.errorCode
+        : "INITIALIZATION");
   }
   if (
     typeof error === "object" &&
@@ -33,6 +37,9 @@ function getDatabaseErrorCode(error: unknown) {
 }
 
 function isRetryableDatabaseError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
   const code = getDatabaseErrorCode(error);
   return code !== null && RETRYABLE_DATABASE_ERROR_CODES.has(code);
 }
@@ -55,7 +62,7 @@ async function VoterEntryContent() {
   let elections: { id: string; title: string }[] = [];
   let databaseAvailable = true;
   if (enabled) {
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         elections = await prisma.election.findMany({
           where: {
@@ -71,8 +78,8 @@ async function VoterEntryContent() {
         });
         break;
       } catch (error) {
-        if (attempt < 4 && isRetryableDatabaseError(error)) {
-          await delay(250 * 2 ** attempt);
+        if (attempt < 2 && isRetryableDatabaseError(error)) {
+          await delay(200 * (attempt + 1));
           continue;
         }
 

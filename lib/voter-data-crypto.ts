@@ -37,7 +37,8 @@ export function normalizeVoterName(name: string) {
 }
 
 export function normalizePhoneNumber(phone: string) {
-  return phone.trim().replace(/[\s().-]/g, "");
+  const normalized = phone.trim().replace(/[\s().-]/g, "");
+  return /^\d{9}$/.test(normalized) ? `0${normalized}` : normalized;
 }
 
 export function encryptVoterField(value: string, purpose: string) {
