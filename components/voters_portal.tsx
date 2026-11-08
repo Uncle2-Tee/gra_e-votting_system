@@ -60,55 +60,63 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
   }
 
   return (
-    <div className="mt-6 flex min-w-0 flex-wrap items-start gap-4">
+    <div className="mt-6 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {data.nominees.map((nominee) => (
         <article
           key={nominee.id}
-          className="h-fit min-w-0 w-full max-w-full rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm shadow-slate-950/[0.02] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md hover:shadow-emerald-950/[0.04] sm:w-fit sm:max-w-md"
+          className="group relative min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-950/[0.06]"
         >
-          <div className="flex min-w-0 items-start gap-3">
-            {nominee.photoUrl ? (
-              <Image
-                src={nominee.photoUrl}
-                alt={`${nominee.name} profile`}
-                width={48}
-                height={48}
-                unoptimized
-                className="size-12 shrink-0 rounded-xl object-cover"
-              />
-            ) : (
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-semibold text-emerald-900">
-                {nominee.name
-                  .split(/\s+/)
-                  .slice(0, 2)
-                  .map((part) => part.charAt(0).toUpperCase())
-                  .join("")}
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-2 gap-y-1">
-                <h2 className="min-w-0 flex-1 break-words text-sm font-semibold text-slate-950">
+          <div className="h-1 bg-gradient-to-r from-emerald-700 via-teal-500 to-emerald-200" />
+          <div className="p-5">
+            <div className="flex min-w-0 items-center gap-4">
+              {nominee.photoUrl ? (
+                <Image
+                  src={nominee.photoUrl}
+                  alt={`${nominee.name} profile`}
+                  width={72}
+                  height={72}
+                  unoptimized
+                  className="size-[72px] shrink-0 rounded-2xl object-cover ring-4 ring-emerald-50"
+                />
+              ) : (
+                <span className="flex size-[72px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 text-lg font-bold text-emerald-900 ring-4 ring-emerald-50">
+                  {nominee.name
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((part) => part.charAt(0).toUpperCase())
+                    .join("")}
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-semibold tracking-wide text-emerald-800 uppercase">
+                  <BadgeCheck className="size-3" />
+                  Approved nominee
+                </span>
+                <h2 className="mt-2 break-words text-base font-semibold leading-5 tracking-tight text-slate-950">
                   {nominee.name}
                 </h2>
+                <p className="mt-1 break-words text-xs font-medium text-emerald-800">
+                  {nominee.positionTitle}
+                </p>
               </div>
-              <p className="mt-1 break-words text-xs font-medium text-emerald-800">
-                {nominee.positionTitle}
-              </p>
-              <p className="break-words text-[10px] text-slate-500">
-                {nominee.electionTitle}
-              </p>
             </div>
+            {nominee.biography ? (
+              <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+                <p className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 uppercase">
+                  Candidate statement
+                </p>
+                <p className="mt-2 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
+                  {nominee.biography}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 border-t border-slate-100 pt-3">
+                <p className="text-[10px] leading-4 text-slate-400">
+                  Approved profile
+                </p>
+              </div>
+            )}
           </div>
-          {nominee.biography ? (
-            <div className="mt-3 border-t border-slate-100 pt-2.5">
-              <p className="text-[10px] font-medium text-slate-500">
-                Candidate statement
-              </p>
-              <p className="mt-1.5 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
-                {nominee.biography}
-              </p>
-            </div>
-          ) : null}
         </article>
       ))}
     </div>
@@ -346,7 +354,7 @@ function Overview({ data }: { data: VoterPortalData }) {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-slate-800">{nominee.name}</p>
-                    <p className="mt-0.5 truncate text-[10px] text-slate-500">{nominee.positionTitle} · {nominee.electionTitle}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-slate-500">{nominee.positionTitle}</p>
                   </div>
                   <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
                 </li>
@@ -423,11 +431,17 @@ export default function VotersPortal({
 
       {section === "nominees" && data ? (
         <>
-          <PageHeading
-            eyebrow="Candidate directory"
-            title="Approved nominees"
-            description="Review profiles approved by election administrators. Only approved nominees are eligible for ballot consideration."
-          />
+          <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <PageHeading
+              eyebrow="Candidate directory"
+              title="Approved nominees"
+              description="Get to know the candidates approved by election administrators."
+            />
+            <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-emerald-900 shadow-sm">
+              <BadgeCheck className="size-4 text-emerald-700" />
+              {data.nominees.length} approved {data.nominees.length === 1 ? "profile" : "profiles"}
+            </div>
+          </div>
           <NomineeCards data={data} />
         </>
       ) : null}

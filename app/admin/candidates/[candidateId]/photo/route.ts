@@ -31,7 +31,7 @@ export async function GET(
 
     const approvedForVoterDisplay =
       candidate.status === "APPROVED" &&
-      ["SCHEDULED", "PUBLISHED", "OPEN"].includes(candidate.election.status);
+      ["DRAFT", "SCHEDULED", "PUBLISHED", "OPEN"].includes(candidate.election.status);
     if (!approvedForVoterDisplay) {
       const admin = await getCurrentAdmin();
       if (

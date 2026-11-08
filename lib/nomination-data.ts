@@ -31,7 +31,7 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
       prisma.candidate.findMany({
         where: {
           status: "APPROVED",
-          election: { status: { in: ["SCHEDULED", "PUBLISHED", "OPEN"] } },
+          election: { status: { in: ["DRAFT", "SCHEDULED", "PUBLISHED", "OPEN"] } },
         },
         orderBy: [
           { election: { startsAt: "asc" } },

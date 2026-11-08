@@ -131,6 +131,7 @@ export async function reviewNomination(
     revalidatePath("/admin");
     revalidatePath("/admin/nominations");
     revalidatePath("/vote");
+    revalidatePath("/vote/nominees");
     return {
       error: null,
       success: decision === "APPROVED"
