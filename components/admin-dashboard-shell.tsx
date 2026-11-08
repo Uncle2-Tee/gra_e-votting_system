@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { signOutAdmin } from "@/app/admin/actions";
 import BrandLogo from "@/components/brand-logo";
+import NavigationLinkStatus from "@/components/navigation-link-status";
 
 const navigationGroups = [
   {
@@ -33,29 +35,52 @@ const navigationGroups = [
   },
   {
     label: "Governance",
-    items: [{ id: "results", label: "Results & reports", href: "/admin#results", icon: ChartNoAxesCombined }],
+    items: [{ id: "results", label: "Results & reports", href: "/admin/results", icon: ChartNoAxesCombined }],
   },
 ];
 
+function AdminSignOutButton({ compact = false }: { compact?: boolean }) {
+  const { pending } = useFormStatus();
+
+  if (compact) {
+    return (
+      <button
+        aria-label={pending ? "Signing out" : "Sign out"}
+        aria-busy={pending}
+        className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-wait disabled:opacity-60"
+        disabled={pending}
+        type="submit"
+      >
+        <LogOut className="size-4" />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      aria-busy={pending}
+      className="group flex h-10 w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-xs font-semibold text-slate-600 shadow-sm shadow-slate-950/[0.02] transition-colors hover:border-rose-200 hover:bg-rose-50/70 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 active:bg-rose-50 disabled:cursor-wait disabled:opacity-60"
+      disabled={pending}
+      type="submit"
+    >
+      <span className="flex size-7 items-center justify-center rounded-md bg-slate-100 text-slate-500 transition-colors group-hover:bg-white group-hover:text-rose-700">
+        <LogOut className="size-3.5" strokeWidth={1.9} />
+      </span>
+      <span>{pending ? "Signing out…" : "Sign out"}</span>
+    </button>
+  );
+}
+
 export default function AdminDashboardShell({
   children,
+  pendingNominationBadge,
 }: {
   children: ReactNode;
+  pendingNominationBadge: ReactNode;
 }) {
   const pathname = usePathname();
-  const [hash, setHash] = useState("");
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
-
-  useEffect(() => {
-    const updateHash = () => setHash(window.location.hash);
-    updateHash();
-    window.addEventListener("hashchange", updateHash);
-    return () => window.removeEventListener("hashchange", updateHash);
-  }, []);
-
-  const activePage = pathname === "/admin"
-    ? hash === "#results" ? "results" : "overview"
-    : pathname.split("/")[2] ?? "overview";
+  const activePage = pathname.split("/")[2] ?? "overview";
 
   return (
     <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
@@ -103,7 +128,10 @@ export default function AdminDashboardShell({
                         strokeWidth={1.8}
                       />
                       <span>{label}</span>
-                      {active && <span aria-hidden="true" className="ml-auto size-2 rounded-full bg-emerald-700 ring-2 ring-emerald-200" />}
+                      <NavigationLinkStatus />
+                      {id === "nominations" ? pendingNominationBadge : active ? (
+                        <span aria-hidden="true" className="ml-auto size-2 rounded-full bg-emerald-700 ring-2 ring-emerald-200" />
+                      ) : null}
                     </Link>
                   );
                 })}
@@ -114,15 +142,7 @@ export default function AdminDashboardShell({
 
         <div className="mt-auto border-t border-slate-100 p-4">
           <form action={signOutAdmin}>
-            <button
-              className="group flex h-10 w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-xs font-semibold text-slate-600 shadow-sm shadow-slate-950/[0.02] transition-colors hover:border-rose-200 hover:bg-rose-50/70 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 active:bg-rose-50"
-              type="submit"
-            >
-              <span className="flex size-7 items-center justify-center rounded-md bg-slate-100 text-slate-500 transition-colors group-hover:bg-white group-hover:text-rose-700">
-                <LogOut className="size-3.5" strokeWidth={1.9} />
-              </span>
-              <span>Sign out</span>
-            </button>
+            <AdminSignOutButton />
           </form>
         </div>
       </aside>
@@ -141,13 +161,7 @@ export default function AdminDashboardShell({
             </Link>
             <div className="flex shrink-0 items-center gap-1.5">
               <form action={signOutAdmin}>
-                <button
-                  aria-label="Sign out"
-                  className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-800"
-                  type="submit"
-                >
-                  <LogOut className="size-4" />
-                </button>
+                <AdminSignOutButton compact />
               </form>
               <button
                 type="button"
@@ -179,7 +193,10 @@ export default function AdminDashboardShell({
                   >
                     <Icon className={`size-4 shrink-0 ${active ? "text-emerald-800" : "text-slate-400 group-hover:text-emerald-700 group-focus-visible:text-emerald-700"}`} strokeWidth={1.8} />
                     <span className="min-w-0 truncate">{label}</span>
-                    {active && <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-700" />}
+                    <NavigationLinkStatus />
+                    {id === "nominations" ? pendingNominationBadge : active ? (
+                      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-700" />
+                    ) : null}
                   </Link>
                 );
               })}

@@ -5,6 +5,8 @@ export type EligibilityImportRowResult = {
   voter?: {
     name: string;
     lookupHash: string;
+    phone: string;
+    phoneLookupHash: string;
   };
 };
 

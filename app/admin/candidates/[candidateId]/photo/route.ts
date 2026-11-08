@@ -21,7 +21,6 @@ export async function GET(
         status: true,
         photoData: true,
         photoMimeType: true,
-        election: { select: { status: true } },
       },
     });
 
@@ -29,9 +28,7 @@ export async function GET(
       return new NextResponse(null, { status: 404 });
     }
 
-    const approvedForVoterDisplay =
-      candidate.status === "APPROVED" &&
-      ["DRAFT", "SCHEDULED", "PUBLISHED", "OPEN"].includes(candidate.election.status);
+    const approvedForVoterDisplay = candidate.status === "APPROVED";
     if (!approvedForVoterDisplay) {
       const admin = await getCurrentAdmin();
       if (

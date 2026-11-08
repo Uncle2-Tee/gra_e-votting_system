@@ -4,10 +4,8 @@ import { Prisma, type ElectionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
-  decryptVoterField,
   encryptVoterField,
   normalizeVoterName,
-  createVoterNameLookupHash,
 } from "@/lib/voter-data-crypto";
 import {
   getCurrentAdmin,
@@ -86,35 +84,60 @@ export async function importEligibleVoters(
       `;
 
       const existingVoters = await transaction.voter.findMany({
-        select: { id: true, nameCiphertext: true },
+        select: {
+          id: true,
+          identificationLookupHash: true,
+          phoneLookupHash: true,
+        },
       });
       const voterIdsByNameHash = new Map<string, string[]>();
+      const existingVotersByNameHash = new Map<
+        string,
+        { id: string; phoneLookupHash: string | null }
+      >();
       for (const voter of existingVoters) {
-        const name = decryptVoterField(voter.nameCiphertext, "voter-name");
-        const lookupHash = createVoterNameLookupHash(name);
-        const voterIds = voterIdsByNameHash.get(lookupHash) ?? [];
-        voterIds.push(voter.id);
-        voterIdsByNameHash.set(lookupHash, voterIds);
+        existingVotersByNameHash.set(voter.identificationLookupHash, voter);
+      }
+
+      const phoneOwners = new Map<string, string>();
+      for (const voter of existingVoters) {
+        voterIdsByNameHash.set(voter.identificationLookupHash, [voter.id]);
+        if (voter.phoneLookupHash) {
+          phoneOwners.set(voter.phoneLookupHash, voter.id);
+        }
       }
 
       const importRows = rows.map((row) => {
         if (row.status !== "ACCEPTED" || !row.voter) {
           return row;
         }
-        if (voterIdsByNameHash.has(row.voter.lookupHash)) {
+        const existing = existingVotersByNameHash.get(row.voter.lookupHash);
+        const phoneOwner = phoneOwners.get(row.voter.phoneLookupHash);
+        if (phoneOwner && phoneOwner !== existing?.id) {
+          return {
+            ...row,
+            status: "REJECTED" as const,
+            errorCodes: ["phone_already_registered"],
+          };
+        }
+        if (existing?.phoneLookupHash === row.voter.phoneLookupHash) {
           return {
             ...row,
             status: "SKIPPED" as const,
             errorCodes: ["already_registered"],
           };
         }
-        voterIdsByNameHash.set(row.voter.lookupHash, []);
+        phoneOwners.set(row.voter.phoneLookupHash, existing?.id ?? row.voter.lookupHash);
         return row;
       });
       const acceptedRows = importRows.filter((row) => row.status === "ACCEPTED");
       const rejectedRows = importRows.filter((row) => row.status === "REJECTED").length;
       const skippedRows = importRows.filter((row) => row.status === "SKIPPED").length;
       const acceptedVoters = acceptedRows.flatMap((row) => row.voter ? [row.voter] : []);
+      const acceptedExistingVoters = acceptedVoters.flatMap((voter) => {
+        const existing = existingVotersByNameHash.get(voter.lookupHash);
+        return existing ? [{ id: existing.id, voter }] : [];
+      });
 
       const elections = await transaction.$queryRaw<{
         id: string;
@@ -145,7 +168,7 @@ export async function importEligibleVoters(
       const importRecord = await transaction.datasetImport.create({
         data: {
           importedById: admin.id,
-          filename: "voter-names.xlsx",
+          filename: "eligible-voters.xlsx",
           status: "VALIDATING",
           totalRows: importRows.length,
         },
@@ -153,17 +176,57 @@ export async function importEligibleVoters(
       });
 
       for (const batch of chunks(acceptedVoters, CHUNK_SIZE)) {
+        const newVoters = batch.filter(
+          (voter) => !existingVotersByNameHash.has(voter.lookupHash),
+        );
+        if (newVoters.length === 0) {
+          continue;
+        }
         await transaction.voter.createMany({
-          data: batch.map((voter) => {
+          data: newVoters.map((voter) => {
             const identity = normalizeVoterName(voter.name);
             return {
               identificationCiphertext: encryptVoterField(identity, "voter-identity"),
               identificationLookupHash: voter.lookupHash,
               nameCiphertext: encryptVoterField(voter.name, "voter-name"),
+              phoneCiphertext: encryptVoterField(voter.phone, "voter-phone"),
+              phoneLookupHash: voter.phoneLookupHash,
             };
           }),
           skipDuplicates: true,
         });
+      }
+
+      const existingIdsToUpdate = acceptedExistingVoters.map(({ id }) => id);
+      if (existingIdsToUpdate.length > 0) {
+        await transaction.voter.updateMany({
+          where: { id: { in: existingIdsToUpdate } },
+          data: { phoneLookupHash: null },
+        });
+        await transaction.electionVoter.updateMany({
+          where: { voterId: { in: existingIdsToUpdate } },
+          data: {
+            voterCredentialDigest: null,
+            voterCredentialIssuedAt: null,
+            voterCredentialWindowStartedAt: null,
+            voterCredentialRequestCount: 0,
+          },
+        });
+      }
+      for (const batch of chunks(acceptedExistingVoters, CHUNK_SIZE)) {
+        const values = batch.map(({ id, voter }) => Prisma.sql`
+          (${id}::uuid, ${encryptVoterField(voter.phone, "voter-phone")}, ${voter.phoneLookupHash})
+        `);
+        if (values.length > 0) {
+          await transaction.$executeRaw(Prisma.sql`
+            UPDATE "Voter" AS target
+            SET "phoneCiphertext" = imported."phoneCiphertext",
+                "phoneLookupHash" = imported."phoneLookupHash",
+                "updatedAt" = CURRENT_TIMESTAMP
+            FROM (VALUES ${Prisma.join(values)}) AS imported("id", "phoneCiphertext", "phoneLookupHash")
+            WHERE target."id" = imported."id"
+          `);
+        }
       }
 
       for (const batch of chunks(acceptedVoters, CHUNK_SIZE)) {

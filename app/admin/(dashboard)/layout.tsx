@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
+import AdminPendingNominationBadge from "@/components/admin-pending-nomination-badge";
 import AdminDashboardShell from "@/components/admin-dashboard-shell";
 import {
   getCurrentAdmin,
@@ -43,7 +44,20 @@ async function AuthenticatedDashboard({
   }
 
   return (
-    <AdminDashboardShell>
+    <AdminDashboardShell
+      pendingNominationBadge={
+        <Suspense
+          fallback={
+            <span
+              aria-hidden="true"
+              className="ml-auto size-5 animate-pulse rounded-full bg-slate-100"
+            />
+          }
+        >
+          <AdminPendingNominationBadge />
+        </Suspense>
+      }
+    >
       {children}
     </AdminDashboardShell>
   );

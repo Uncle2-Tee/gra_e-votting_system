@@ -9,12 +9,15 @@ import {
   FilePlus2,
   LayoutDashboard,
   Menu,
+  Vote,
   X,
 } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
+import NavigationLinkStatus from "@/components/navigation-link-status";
 
 const navigation = [
-  { section: "overview", label: "Overview", href: "/vote", icon: LayoutDashboard },
+  { section: "overview", label: "Overview", href: "/vote/overview", icon: LayoutDashboard },
+  { section: "ballot", label: "Vote", href: "/vote", icon: Vote },
   { section: "nominate", label: "Nomination form", href: "/vote/nominate", icon: FilePlus2 },
   { section: "nominees", label: "Approved nominees", href: "/vote/nominees", icon: BadgeCheck },
   { section: "results", label: "Results", href: "/vote/results", icon: ChartNoAxesCombined },
@@ -26,7 +29,11 @@ export default function VoterDashboardShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const activePage = navigation.find((item) => item.href === pathname) ?? navigation[0];
+  const activePage = navigation.find((item) =>
+    item.section === "ballot"
+      ? pathname === "/vote" || pathname === "/vote/ballot"
+      : item.href === pathname,
+  ) ?? navigation[0];
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   return (
@@ -66,6 +73,7 @@ export default function VoterDashboardShell({
                 >
                   <Icon className={`size-4 ${active ? "text-emerald-800" : "text-slate-400 group-hover:text-slate-600"}`} strokeWidth={1.8} />
                   <span>{label}</span>
+                  <NavigationLinkStatus />
                   {active ? <span aria-hidden="true" className="ml-auto size-2 rounded-full bg-emerald-700 ring-2 ring-emerald-200" /> : null}
                 </Link>
               );
@@ -119,6 +127,7 @@ export default function VoterDashboardShell({
                   >
                     <Icon className={`size-4 shrink-0 ${active ? "text-emerald-800" : "text-slate-400 group-hover:text-emerald-700 group-focus-visible:text-emerald-700"}`} />
                     <span className="min-w-0 truncate">{label}</span>
+                    <NavigationLinkStatus />
                     {active ? <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-700" /> : null}
                   </Link>
                 );

@@ -3,11 +3,11 @@
 import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import {
-  deleteScheduledElection,
-  type DeleteScheduledElectionState,
+  deleteElection,
+  type DeleteElectionState,
 } from "@/app/admin/elections/actions";
 
-const INITIAL_STATE: DeleteScheduledElectionState = { error: null, success: null };
+const INITIAL_STATE: DeleteElectionState = { error: null, success: null };
 
 export default function AdminElectionDeleteButton({
   electionId,
@@ -17,7 +17,7 @@ export default function AdminElectionDeleteButton({
   title: string;
 }) {
   const [state, action, pending] = useActionState(
-    deleteScheduledElection.bind(null, electionId),
+    deleteElection.bind(null, electionId),
     INITIAL_STATE,
   );
 
@@ -26,7 +26,7 @@ export default function AdminElectionDeleteButton({
       action={action}
       className="flex flex-col items-end gap-1"
       onSubmit={(event) => {
-        if (!window.confirm(`Permanently delete the scheduled election “${title}”?`)) {
+        if (!window.confirm(`Permanently delete “${title}” and all election records, including any ballots and results? This cannot be undone.`)) {
           event.preventDefault();
         }
       }}
@@ -34,7 +34,7 @@ export default function AdminElectionDeleteButton({
       <button
         type="submit"
         aria-label={`Delete ${title}`}
-        title="Delete scheduled election"
+        title="Delete election"
         disabled={pending}
         className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-wait disabled:opacity-60"
       >

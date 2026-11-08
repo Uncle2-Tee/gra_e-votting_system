@@ -28,7 +28,8 @@ export type CreateElectionState = {
 
 export type UpdateElectionScheduleState = CreateElectionState;
 export type AddElectionPositionsState = CreateElectionState;
-export type DeleteScheduledElectionState = CreateElectionState;
+export type RemoveElectionPositionState = CreateElectionState;
+export type DeleteElectionState = CreateElectionState;
 
 const INITIAL_STATE: CreateElectionState = { error: null, success: null };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -262,14 +263,23 @@ export async function addElectionPositions(
 
   try {
     const result = await prisma.$transaction(async (transaction) => {
-      const elections = await transaction.$queryRaw<{ id: string }[]>`
-        SELECT "id"
+      const elections = await transaction.$queryRaw<{
+        id: string;
+        status: ElectionStatus;
+      }[]>`
+        SELECT "id", "status"
         FROM "Election"
         WHERE "id" = ${electionId}::uuid
         FOR UPDATE
       `;
       if (elections.length === 0) {
         return { added: 0, error: "The selected election could not be found." };
+      }
+      if (!canAcceptPreElectionChanges(elections[0].status)) {
+        return {
+          added: 0,
+          error: "Positions can only be changed before voting opens.",
+        };
       }
 
       const existingPositions = await transaction.position.findMany({
@@ -337,6 +347,128 @@ export async function addElectionPositions(
     return {
       ...INITIAL_STATE,
       error: "The positions could not be added. Please try again.",
+    };
+  }
+}
+
+export async function removeElectionPosition(
+  electionId: string,
+  positionId: string,
+  _previousState: RemoveElectionPositionState,
+): Promise<RemoveElectionPositionState> {
+  void _previousState;
+  let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
+  try {
+    admin = await getCurrentAdmin();
+  } catch (error) {
+    if (!isAdminDatabaseUnavailableError(error)) {
+      throw error;
+    }
+    return {
+      ...INITIAL_STATE,
+      error: "Positions cannot be updated right now because the database is unavailable.",
+    };
+  }
+
+  if (!admin) {
+    redirect("/admin/login");
+  }
+  if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
+    return { ...INITIAL_STATE, error: "You are not authorized to update election positions." };
+  }
+  if (!UUID_PATTERN.test(electionId) || !UUID_PATTERN.test(positionId)) {
+    return { ...INITIAL_STATE, error: "The selected position is invalid." };
+  }
+
+  try {
+    const result = await prisma.$transaction(async (transaction) => {
+      const elections = await transaction.$queryRaw<{ status: ElectionStatus }[]>`
+        SELECT "status"
+        FROM "Election"
+        WHERE "id" = ${electionId}::uuid
+        FOR UPDATE
+      `;
+      if (elections.length === 0) {
+        return {
+          error: "The selected election could not be found.",
+          title: null,
+          removedNominationCount: 0,
+        };
+      }
+      if (!canAcceptPreElectionChanges(elections[0].status)) {
+        return {
+          error: "Positions can only be removed before voting opens.",
+          title: null,
+          removedNominationCount: 0,
+        };
+      }
+
+      const position = await transaction.position.findFirst({
+        where: { id: positionId, electionId },
+        select: { id: true, title: true },
+      });
+      if (!position) {
+        return {
+          error: "The selected position could not be found.",
+          title: null,
+          removedNominationCount: 0,
+        };
+      }
+
+      const ballotSelectionCount = await transaction.ballotSelection.count({
+        where: { positionId, electionId },
+      });
+      if (ballotSelectionCount > 0) {
+        return {
+          error: "This position has recorded votes and cannot be removed.",
+          title: null,
+          removedNominationCount: 0,
+        };
+      }
+
+      const candidateCount = await transaction.candidate.count({
+        where: { positionId, electionId },
+      });
+      await transaction.position.delete({ where: { id: positionId } });
+      await transaction.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "ELECTION_POSITION_REMOVED",
+          entityType: "POSITION",
+          entityId: positionId,
+          outcome: "DELETED",
+          metadata: {
+            electionId,
+            title: position.title,
+            removedNominationCount: candidateCount,
+          },
+        },
+      });
+
+      return {
+        error: null,
+        title: position.title,
+        removedNominationCount: candidateCount,
+      };
+    });
+
+    if (result.error || !result.title) {
+      return { ...INITIAL_STATE, error: result.error };
+    }
+
+    revalidateElectionSchedule();
+    revalidatePath("/admin/nominations");
+    revalidatePath("/vote/nominees");
+    revalidatePath("/vote/results");
+    return {
+      error: null,
+      success: `“${result.title}” was removed${result.removedNominationCount > 0 ? ` along with ${result.removedNominationCount} nomination application${result.removedNominationCount === 1 ? "" : "s"}` : ""}.`,
+    };
+  } catch (error) {
+    logElectionActionFailure("Election position removal failed.", error);
+    return {
+      ...INITIAL_STATE,
+      error: "The position could not be removed. Please refresh and try again.",
     };
   }
 }
@@ -471,11 +603,11 @@ export async function updateElectionSchedule(
   }
 }
 
-export async function deleteScheduledElection(
+export async function deleteElection(
   electionId: string,
-  _previousState: DeleteScheduledElectionState,
+  _previousState: DeleteElectionState,
   _formData: FormData,
-): Promise<DeleteScheduledElectionState> {
+): Promise<DeleteElectionState> {
   void _previousState;
   void _formData;
 
@@ -488,7 +620,7 @@ export async function deleteScheduledElection(
     }
     return {
       ...INITIAL_STATE,
-      error: "Scheduled elections cannot be deleted right now because the database is unavailable.",
+      error: "Elections cannot be deleted right now because the database is unavailable.",
     };
   }
 
@@ -496,7 +628,7 @@ export async function deleteScheduledElection(
     redirect("/admin/login");
   }
   if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
-    return { ...INITIAL_STATE, error: "You are not authorized to delete scheduled elections." };
+    return { ...INITIAL_STATE, error: "You are not authorized to delete elections." };
   }
   if (!UUID_PATTERN.test(electionId)) {
     return { ...INITIAL_STATE, error: "The selected election is invalid." };
@@ -522,8 +654,8 @@ export async function deleteScheduledElection(
         return { error: "The selected election could not be found." };
       }
       const currentStatus = getEffectiveElectionStatus(election);
-      if (currentStatus !== "SCHEDULED") {
-        return { error: "Only scheduled elections can be deleted." };
+      if (!["SCHEDULED", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"].includes(currentStatus)) {
+        return { error: "Only scheduled or closed elections can be deleted." };
       }
 
       const [ballotCount, participationCount] = await Promise.all([
@@ -532,20 +664,19 @@ export async function deleteScheduledElection(
           where: { electionVoter: { electionId } },
         }),
       ]);
-      if (ballotCount > 0 || participationCount > 0) {
-        return {
-          error: "This election has voting activity and cannot be deleted.",
-        };
-      }
-
       await transaction.auditLog.create({
         data: {
           actorId: admin.id,
-          action: "SCHEDULED_ELECTION_DELETED",
+          action: "ELECTION_DELETED",
           entityType: "ELECTION",
           entityId: electionId,
           outcome: "DELETED",
-          metadata: { title: election.title, previousStatus: currentStatus },
+          metadata: {
+            title: election.title,
+            previousStatus: currentStatus,
+            deletedBallots: ballotCount,
+            deletedParticipations: participationCount,
+          },
         },
       });
 
@@ -553,13 +684,18 @@ export async function deleteScheduledElection(
         where: { electionId },
         data: { electionId: null },
       });
+      await transaction.voteParticipation.deleteMany({
+        where: { electionVoter: { electionId } },
+      });
+      await transaction.ballotSelection.deleteMany({ where: { electionId } });
+      await transaction.ballot.deleteMany({ where: { electionId } });
       await transaction.candidate.deleteMany({ where: { electionId } });
       await transaction.position.deleteMany({ where: { electionId } });
       await transaction.electionVoter.deleteMany({ where: { electionId } });
       await transaction.election.delete({ where: { id: electionId } });
 
       return { title: election.title };
-    });
+    }, { maxWait: 15_000, timeout: 60_000 });
 
     if ("error" in result && typeof result.error === "string") {
       return { ...INITIAL_STATE, error: result.error };
@@ -568,19 +704,20 @@ export async function deleteScheduledElection(
     revalidateElectionSchedule();
     return {
       error: null,
-      success: `“${result.title}” and its setup records were deleted.`,
+      success: `“${result.title}” and its election records were permanently deleted.`,
     };
   } catch (error) {
-    logElectionActionFailure("Scheduled election deletion failed.", error);
+    logElectionActionFailure("Election deletion failed.", error);
     return {
       ...INITIAL_STATE,
-      error: "The scheduled election could not be deleted. Please try again.",
+      error: "The election could not be deleted. Please try again.",
     };
   }
 }
 
 function revalidateElectionSchedule() {
   revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin/elections");
   revalidatePath("/admin/eligibility");
   revalidatePath("/vote");

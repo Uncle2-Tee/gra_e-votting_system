@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   MAX_ELECTION_POSITIONS,
   MAX_POSITION_TITLE_LENGTH,
@@ -130,13 +130,13 @@ export default function NominationPositionPicker({
               {position}
               <button
                 type="button"
-                aria-label={`Remove ${position}`}
+                aria-label={`Delete ${position} from this selection`}
                 onClick={() =>
                   onChange(positions.filter((selected) => selected !== position))
                 }
-                className="flex size-5 items-center justify-center rounded-full text-emerald-800 hover:bg-emerald-100"
+                className="flex size-6 items-center justify-center rounded-full text-emerald-800 hover:bg-emerald-100"
               >
-                <X className="size-3" />
+                <Trash2 className="size-3" />
               </button>
             </li>
           ))}

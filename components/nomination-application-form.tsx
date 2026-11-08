@@ -182,7 +182,7 @@ export default function NominationApplicationForm({
               Start a nomination
             </h3>
             <p className="mt-1 text-sm leading-5 text-slate-500">
-              Choose an available position and submit your details for administrator review.
+              Choose a position and submit your details for administrator review. Multiple candidates may apply for the same position.
             </p>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function NominationApplicationForm({
               ))}
             </select>
             <span className="mt-1.5 block text-[11px] leading-4 text-slate-500">
-              Select the position you are applying for.
+              Select the position you are applying for. Other candidates may apply for this same position.
             </span>
           </label>
           <label className="text-xs font-medium text-slate-700">

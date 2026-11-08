@@ -1,22 +1,63 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ListPlus, Save } from "lucide-react";
+import { ListPlus, Save, Trash2 } from "lucide-react";
 import {
   addElectionPositions,
+  removeElectionPosition,
   type AddElectionPositionsState,
+  type RemoveElectionPositionState,
 } from "@/app/admin/elections/actions";
 import NominationPositionPicker from "@/components/nomination-position-picker";
 import { MAX_ELECTION_POSITIONS } from "@/lib/nomination-positions";
 
 const INITIAL_STATE: AddElectionPositionsState = { error: null, success: null };
+const INITIAL_REMOVE_STATE: RemoveElectionPositionState = { error: null, success: null };
+
+function RemovePositionButton({
+  electionId,
+  position,
+}: {
+  electionId: string;
+  position: { id: string; title: string };
+}) {
+  const [state, action, pending] = useActionState(
+    removeElectionPosition.bind(null, electionId, position.id),
+    INITIAL_REMOVE_STATE,
+  );
+
+  return (
+    <form action={action} className="flex items-center gap-2">
+      {state.error ? (
+        <p role="alert" className="max-w-56 text-[10px] leading-4 text-red-700">
+          {state.error}
+        </p>
+      ) : null}
+      <button
+        type="submit"
+        disabled={pending}
+        aria-label={`Remove ${position.title} position`}
+        title={`Remove ${position.title}`}
+        onClick={(event) => {
+          if (!window.confirm(`Remove "${position.title}"? Any nomination applications for this position will also be deleted. Positions with recorded votes cannot be removed.`)) {
+            event.preventDefault();
+          }
+        }}
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-700 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-50"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </form>
+  );
+}
 
 export default function AdminElectionPositionManager({
   election,
 }: {
   election: {
     id: string;
-    positions: string[];
+    status: string;
+    positions: { id: string; title: string }[];
   };
 }) {
   const [state, action, pending] = useActionState(
@@ -24,24 +65,33 @@ export default function AdminElectionPositionManager({
     INITIAL_STATE,
   );
   const [newPositions, setNewPositions] = useState<string[]>([]);
+  const canEditPositions = ["DRAFT", "SCHEDULED", "PUBLISHED"].includes(election.status);
   return (
     <details className="mt-2">
       <summary className="w-fit cursor-pointer list-none rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">
         <span className="inline-flex items-center gap-1.5">
           <ListPlus className="size-3.5" />
-          Manage nomination positions ({election.positions.length})
+          Manage positions on nomination form ({election.positions.length})
         </span>
       </summary>
       <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
         <p className="text-[11px] font-semibold text-slate-700">Current positions</p>
+        <p className="mt-1 text-[10px] leading-4 text-slate-500">
+          Delete a position here to remove it from the voter nomination form. Any applications for it will also be deleted.
+        </p>
         {election.positions.length > 0 ? (
-          <ul className="mt-2 flex flex-wrap gap-1.5">
+          <ul className="mt-2 space-y-1.5">
             {election.positions.map((position) => (
               <li
-                key={position}
-                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-700"
+                key={position.id}
+                className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
               >
-                {position}
+                <span className="min-w-0 break-words text-[10px] font-medium text-slate-700">
+                  {position.title}
+                </span>
+                {canEditPositions ? (
+                  <RemovePositionButton electionId={election.id} position={position} />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -49,7 +99,7 @@ export default function AdminElectionPositionManager({
           <p className="mt-1 text-[11px] text-slate-500">No positions have been added.</p>
         )}
 
-        {election.positions.length < MAX_ELECTION_POSITIONS ? (
+        {canEditPositions && election.positions.length < MAX_ELECTION_POSITIONS ? (
           <form action={action} className="mt-4 space-y-2">
             <label htmlFor={`custom-position-${election.id}`} className="text-[11px] font-semibold text-slate-700">
               Add positions
@@ -58,7 +108,7 @@ export default function AdminElectionPositionManager({
               id={election.id}
               positions={newPositions}
               onChange={setNewPositions}
-              existingPositions={election.positions}
+              existingPositions={election.positions.map(({ title }) => title)}
             />
             {state.error ? (
               <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-800">
@@ -79,9 +129,13 @@ export default function AdminElectionPositionManager({
               {pending ? "Adding positions…" : "Save positions"}
             </button>
           </form>
-        ) : (
+        ) : canEditPositions ? (
           <p className="mt-3 text-[11px] text-slate-500">
             This election has reached the {MAX_ELECTION_POSITIONS}-position limit.
+          </p>
+        ) : (
+          <p className="mt-3 text-[11px] text-slate-500">
+            Positions cannot be changed after voting opens.
           </p>
         )}
       </div>

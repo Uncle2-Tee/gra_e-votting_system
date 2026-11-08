@@ -115,8 +115,8 @@ export default function AdminElectionScheduleEditor({
         <p className="text-[10px] leading-4 text-slate-500 sm:col-span-2">
           Times use {election.timezone}.{" "}
           {isOpen
-            ? "Only the closing time can be changed while voting is open."
-            : "Opening must remain in the future, and closing must be later than opening."}
+            ? "The schedule is shared by every position. Only the closing time can be changed while voting is open."
+            : "This schedule applies to every position in the election. Opening must remain in the future, and closing must be later than opening."}
         </p>
         {state.error ? (
           <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:col-span-2">

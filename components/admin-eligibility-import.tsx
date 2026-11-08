@@ -20,7 +20,7 @@ export default function AdminEligibilityImport() {
             <FileSpreadsheet className="size-5" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Import voter names</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Import eligible voters</h2>
             <p className="mt-0.5 text-xs text-slate-500">
               Registered voters are eligible for every current and future election.
             </p>
@@ -62,7 +62,7 @@ export default function AdminEligibilityImport() {
             </span>
           )}
           <span className="mt-1.5 block text-[11px] leading-5 text-slate-500">
-            Maximum 5 MB and 5,000 voter rows. Only the Name column is imported; any other columns are ignored.
+            Maximum 5 MB and 5,000 voter rows. Name and Phone Number are required; any other columns are ignored.
           </span>
         </label>
 
@@ -75,7 +75,7 @@ export default function AdminEligibilityImport() {
           <div aria-live="polite" className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
             <p className="text-xs font-semibold text-emerald-900">Import saved</p>
             <p className="mt-1 text-xs leading-5 text-emerald-800">
-              {state.result.acceptedRows} names added · {state.result.electionsUpdated} current elections updated · {state.result.rejectedRows} rejected · {state.result.skippedRows} skipped
+              {state.result.acceptedRows} voter rows saved · {state.result.electionsUpdated} current elections updated · {state.result.rejectedRows} rejected · {state.result.skippedRows} skipped
             </p>
           </div>
         )}
@@ -84,7 +84,7 @@ export default function AdminEligibilityImport() {
           disabled={pending}
           type="submit"
         >
-          {pending ? "Validating and saving…" : "Import voter names"}
+          {pending ? "Validating and saving…" : "Import eligible voters"}
         </button>
       </form>
 
@@ -94,9 +94,10 @@ export default function AdminEligibilityImport() {
           <h2 className="text-sm font-semibold">Workbook requirements</h2>
         </div>
         <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
-          <li><strong className="text-slate-800">Required column:</strong> Name.</li>
+          <li><strong className="text-slate-800">Required columns:</strong> Name and Phone Number.</li>
+          <li>Each voter must have a unique phone number. The submitted number is matched against this roster before an election ID is sent.</li>
           <li>One worksheet only; the first row contains column headers.</li>
-          <li>Repeated names in one file and names already registered are skipped. Identical names are treated as the same person.</li>
+          <li>Repeated names and phone numbers in one file are reported. Identical normalized names are treated as the same person.</li>
           <li>Voters are eligible for current open or upcoming elections and all elections created in the future. Closed elections are unchanged.</li>
           <li>Personal values are encrypted before storage. Import history stores counts and row numbers, not spreadsheet values.</li>
         </ul>

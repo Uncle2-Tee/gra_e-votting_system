@@ -58,7 +58,6 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
               </article>
             ))}
           </section>
-
     </main>
   );
 }

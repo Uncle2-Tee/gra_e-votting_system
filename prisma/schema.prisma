@@ -94,6 +94,7 @@ model Voter {
   nameCiphertext           String
   emailCiphertext          String?
   phoneCiphertext          String?
+  phoneLookupHash          String?       @unique
   departmentCiphertext     String?
   status                   AccountStatus @default(ACTIVE)
   createdAt                DateTime      @default(now())
@@ -135,16 +136,20 @@ model Election {
 // ==========================================
 
 model ElectionVoter {
-  id         String            @id @default(uuid()) @db.Uuid
-  electionId String            @db.Uuid
-  voterId    String            @db.Uuid
-  status     EligibilityStatus @default(ELIGIBLE)
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  id                             String            @id @default(uuid()) @db.Uuid
+  electionId                     String            @db.Uuid
+  voterId                        String            @db.Uuid
+  status                         EligibilityStatus @default(ELIGIBLE)
+  voterCredentialDigest          String?           @unique
+  voterCredentialIssuedAt        DateTime?
+  voterCredentialWindowStartedAt DateTime?
+  voterCredentialRequestCount    Int               @default(0)
+  createdAt                      DateTime          @default(now())
+  updatedAt                      DateTime          @updatedAt
 
-  election           Election            @relation(fields: [electionId], references: [id], onDelete: Restrict)
-  voter              Voter               @relation(fields: [voterId], references: [id], onDelete: Restrict)
-  participation      VoteParticipation?
+  election       Election            @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  voter          Voter               @relation(fields: [voterId], references: [id], onDelete: Restrict)
+  participations VoteParticipation[]
 
   @@unique([electionId, voterId])
   @@index([voterId, status])
@@ -155,11 +160,15 @@ model ElectionVoter {
 // ==========================================
 
 model VoteParticipation {
-  id              String   @id @default(uuid()) @db.Uuid
-  electionVoterId String   @unique @db.Uuid
-  recordedAt      DateTime @default(now())
+  id              String    @id @default(uuid()) @db.Uuid
+  electionVoterId String    @db.Uuid
+  positionId      String?   @db.Uuid
+  recordedAt      DateTime?
 
   electionVoter ElectionVoter @relation(fields: [electionVoterId], references: [id], onDelete: Restrict)
+  position      Position?     @relation(fields: [positionId], references: [id], onDelete: Restrict)
+
+  @@unique([electionVoterId, positionId])
 }
 
 // ==========================================
@@ -177,9 +186,10 @@ model Position {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  election         Election          @relation(fields: [electionId], references: [id], onDelete: Restrict)
+  election         Election            @relation(fields: [electionId], references: [id], onDelete: Restrict)
   candidates       Candidate[]
   ballotSelections BallotSelection[]
+  participations   VoteParticipation[]
 
   @@unique([id, electionId])
   @@index([electionId, displayOrder])

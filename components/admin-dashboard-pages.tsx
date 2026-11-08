@@ -116,7 +116,7 @@ export function AdminElectionsPage({
                   <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
                     {election.status.replaceAll("_", " ")}
                   </span>
-                  {election.status === "SCHEDULED" ? (
+                  {["SCHEDULED", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"].includes(election.status) ? (
                     <AdminElectionDeleteButton
                       electionId={election.id}
                       title={election.title}
@@ -145,7 +145,7 @@ export function AdminElectionsPage({
         )}
         <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:px-6">
           <p className="text-[10px] text-slate-500">
-            Voting schedules are listed with the most recently updated first.
+            Each voting cycle has one opening and closing time shared by all its positions. Schedules are listed with the most recently updated first.
           </p>
         </div>
       </section>
@@ -219,7 +219,7 @@ export function AdminVotersPage({ overview }: { overview: AdminOverview }) {
             </span>
             <h2 className="mt-3 text-sm font-semibold text-slate-900">Manage voter eligibility</h2>
             <p className="mt-1 max-w-md text-xs leading-5 text-slate-600">
-              Import voter names to register eligible voters for current and future elections.
+              Import voter names and unique phone numbers to register eligible voters for current and future elections.
             </p>
           </div>
           <Link

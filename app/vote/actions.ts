@@ -251,6 +251,7 @@ export async function submitNominationApplication(
 
     revalidatePath("/vote");
     revalidatePath("/vote/nominate");
+    revalidatePath("/admin", "layout");
     revalidatePath("/admin/nominations");
     return { error: null, success: true };
   } catch (error) {

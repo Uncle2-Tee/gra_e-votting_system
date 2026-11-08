@@ -34,6 +34,7 @@ export type VoterResultsData = {
   elections: {
     id: string;
     title: string;
+    status: "OPEN" | "FINAL";
     resultsAvailableAt: string | null;
     timezone: string;
     ballotsCast: number;
@@ -43,6 +44,7 @@ export type VoterResultsData = {
       candidates: {
         id: string;
         name: string;
+        photoUrl: string | null;
         votes: number;
         percentage: number;
       }[];

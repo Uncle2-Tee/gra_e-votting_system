@@ -44,7 +44,10 @@ export type AdminElectionSchedules = {
     startsAt: string | null;
     endsAt: string | null;
     timezone: string;
-    positions: string[];
+    positions: {
+      id: string;
+      title: string;
+    }[];
   }[];
 } | {
   databaseStatus: "unavailable";
@@ -68,7 +71,7 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
         timezone: true,
         positions: {
           orderBy: { displayOrder: "asc" },
-          select: { title: true },
+          select: { id: true, title: true },
         },
       },
     });
@@ -79,7 +82,7 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
         ...election,
         startsAt: election.startsAt?.toISOString() ?? null,
         endsAt: election.endsAt?.toISOString() ?? null,
-        positions: election.positions.map(({ title }) => title),
+        positions: election.positions,
       })),
     };
   } catch (error) {

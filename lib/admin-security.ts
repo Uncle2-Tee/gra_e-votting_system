@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type AccountStatus, type UserRole } from "@prisma/client";
 import {
   createCipheriv,
   createHmac,
@@ -9,6 +9,7 @@ import {
   scrypt as scryptCallback,
   timingSafeEqual,
 } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 import { cookies } from "next/headers";
 import { decryptVoterField, encryptVoterField } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
@@ -41,10 +42,22 @@ function isDatabaseConnectionFailure(error: unknown) {
   );
 }
 
+function isRetryableDatabaseConnectionFailure(error: unknown) {
+  const errorCode =
+    error instanceof Prisma.PrismaClientKnownRequestError
+      ? error.code
+      : error instanceof Prisma.PrismaClientInitializationError
+        ? error.errorCode
+        : undefined;
+  return ["P1001", "P1002", "P1008", "P1017", "P2024"].includes(errorCode ?? "");
+}
+
 function logAdminSessionDatabaseFailure(error: unknown) {
   const errorCode =
     error instanceof Prisma.PrismaClientKnownRequestError
       ? error.code
+      : error instanceof Prisma.PrismaClientInitializationError
+        ? error.errorCode ?? "INITIALIZATION"
       : "UNAVAILABLE";
   console.error("Could not verify the administrator session because the database is unavailable.", {
     errorName: error instanceof Error ? error.name : "UnknownError",
@@ -224,23 +237,52 @@ export async function getCurrentAdmin() {
   }
 
   try {
-    const session = await prisma.adminSession.findUnique({
-      where: { tokenHash: hashSessionToken(token) },
-      select: {
-        id: true,
-        expiresAt: true,
-        revokedAt: true,
-        user: {
+    let session:
+      | {
+          id: string;
+          expiresAt: Date;
+          revokedAt: Date | null;
+          user: {
+            id: string;
+            role: UserRole;
+            status: AccountStatus;
+            nameCiphertext: string;
+            emailLookupHash: string;
+          };
+        }
+      | null
+      | undefined;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        session = await prisma.adminSession.findUnique({
+          where: { tokenHash: hashSessionToken(token) },
           select: {
             id: true,
-            role: true,
-            status: true,
-            nameCiphertext: true,
-            emailLookupHash: true,
+            expiresAt: true,
+            revokedAt: true,
+            user: {
+              select: {
+                id: true,
+                role: true,
+                status: true,
+                nameCiphertext: true,
+                emailLookupHash: true,
+              },
+            },
           },
-        },
-      },
-    });
+        });
+        break;
+      } catch (error) {
+        if (attempt === 2 || !isRetryableDatabaseConnectionFailure(error)) {
+          throw error;
+        }
+        await delay(150 * (attempt + 1));
+      }
+    }
+
+    if (session === undefined) {
+      throw new Error("Administrator session lookup did not complete.");
+    }
 
     if (
       !session ||

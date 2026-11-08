@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  Award,
   BadgeCheck,
   ChartNoAxesCombined,
   CheckCircle2,
@@ -123,18 +124,29 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
   );
 }
 
-function ResultsPanel({ data }: { data: VoterResultsData }) {
+export function ElectionResultsPanel({
+  data,
+  showHeading = true,
+}: {
+  data: VoterResultsData;
+  showHeading?: boolean;
+}) {
+  const liveResults = data.elections.some((election) => election.status === "OPEN");
   return (
     <>
-      <ResultsAutoRefresh />
-      <PageHeading
-        eyebrow="Election results"
-        title="Results & reports"
-        description="Final tallies appear automatically once an election has closed."
-      />
+      <ResultsAutoRefresh live={liveResults} />
+      {showHeading ? (
+        <PageHeading
+          eyebrow="Election results"
+          title="Results & reports"
+          description="Follow vote totals while voting is underway and see the final results and winners after polls close."
+        />
+      ) : null}
       <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-slate-500">
         <Clock3 className="size-3.5" />
-        This page checks for newly closed elections every 30 seconds.
+        {liveResults
+          ? "Live totals refresh every 10 seconds while voting is open."
+          : "Final results and winners are available after voting closes."}
       </p>
       {data.databaseStatus === "unavailable" ? (
         <div role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -146,10 +158,10 @@ function ResultsPanel({ data }: { data: VoterResultsData }) {
             <ChartNoAxesCombined className="size-5" />
           </span>
           <h2 className="mt-3 text-sm font-semibold text-slate-800">
-            No elections have closed
+            No election results are available yet
           </h2>
           <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500">
-            Final results will appear here automatically after voting closes. Results are not shown while an election is open.
+            Results will appear here when an election opens and update as votes are counted. Final winners remain visible after voting closes.
           </p>
         </div>
       ) : (
@@ -159,7 +171,7 @@ function ResultsPanel({ data }: { data: VoterResultsData }) {
               <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-700 uppercase">
-                    Final results
+                    {election.status === "OPEN" ? "Live election results" : "Final election results"}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">
                     {election.title}
@@ -167,7 +179,7 @@ function ResultsPanel({ data }: { data: VoterResultsData }) {
                   <p className="mt-1 text-[11px] text-slate-500">
                     {election.resultsAvailableAt ? (
                       <>
-                        Available{" "}
+                        {election.status === "OPEN" ? "Voting opened" : "Results available"}{" "}
                         {new Intl.DateTimeFormat("en", {
                           dateStyle: "medium",
                           timeStyle: "short",
@@ -180,37 +192,125 @@ function ResultsPanel({ data }: { data: VoterResultsData }) {
                 </div>
                 <div className="w-fit rounded-xl bg-slate-50 px-3 py-2 sm:text-right">
                   <p className="text-lg font-semibold text-slate-900">{election.ballotsCast}</p>
-                  <p className="text-[10px] text-slate-500">Ballots counted</p>
+                  <p className="text-[10px] text-slate-500">Position votes counted</p>
                 </div>
               </div>
 
               {election.positions.length > 0 ? (
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   {election.positions.map((position) => {
+                    const rankedCandidates = [...position.candidates].sort(
+                      (left, right) =>
+                        right.votes - left.votes || left.name.localeCompare(right.name),
+                    );
                     const highestVotes = Math.max(
                       0,
-                      ...position.candidates.map((candidate) => candidate.votes),
+                      ...rankedCandidates.map((candidate) => candidate.votes),
                     );
                     const tiedLeaders =
                       highestVotes > 0 &&
-                      position.candidates.filter((candidate) => candidate.votes === highestVotes).length > 1;
+                      rankedCandidates.filter((candidate) => candidate.votes === highestVotes).length > 1;
+                    const leaders = rankedCandidates.filter(
+                      (candidate) => highestVotes > 0 && candidate.votes === highestVotes,
+                    );
 
                     return (
                       <section key={position.id} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-                        <h3 className="text-sm font-semibold text-slate-900">{position.title}</h3>
-                        {position.candidates.length > 0 ? (
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold text-slate-900">{position.title}</h3>
+                            <p className="mt-0.5 text-[10px] text-slate-500">
+                              {rankedCandidates.length} {rankedCandidates.length === 1 ? "candidate" : "candidates"}
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-[10px] font-medium tabular-nums text-slate-500">
+                            {rankedCandidates.reduce((total, candidate) => total + candidate.votes, 0)} votes
+                          </p>
+                        </div>
+                        {election.status === "FINAL" ? (
+                          <div
+                            className={`mt-3 flex items-start gap-2 rounded-lg px-3 py-2 ${
+                              leaders.length === 1
+                                ? "bg-emerald-50 text-emerald-950"
+                                : "bg-amber-50 text-amber-950"
+                            }`}
+                          >
+                            <Award className="mt-0.5 size-4 shrink-0" />
+                            <p className="text-[11px] leading-5">
+                              {leaders.length === 1 ? (
+                                <>
+                                  <span className="font-semibold">Winner declared:</span>{" "}
+                                  {leaders[0].name} — {leaders[0].votes}{" "}
+                                  {leaders[0].votes === 1 ? "vote" : "votes"} ({leaders[0].percentage}%).
+                                </>
+                              ) : leaders.length > 1 ? (
+                                <>
+                                  <span className="font-semibold">Tie:</span>{" "}
+                                  {leaders.map((candidate) => candidate.name).join(", ")} each received{" "}
+                                  {highestVotes} {highestVotes === 1 ? "vote" : "votes"} (
+                                  {leaders[0].percentage}%). No sole winner is declared.
+                                </>
+                              ) : (
+                                <>
+                                  <span className="font-semibold">No winner declared:</span>{" "}
+                                  no votes were recorded for this position.
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        ) : leaders.length > 0 ? (
+                          <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-[11px] leading-5 text-blue-900">
+                            <span className="font-semibold">
+                              {tiedLeaders ? "Current tie:" : "Currently leading:"}
+                            </span>{" "}
+                            {leaders.map((candidate) => candidate.name).join(", ")} —{" "}
+                            {highestVotes} {highestVotes === 1 ? "vote" : "votes"} (
+                            {leaders[0].percentage}%).
+                          </p>
+                        ) : null}
+                        {rankedCandidates.length > 0 ? (
                           <ul className="mt-3 space-y-3">
-                            {position.candidates.map((candidate) => (
+                            {rankedCandidates.map((candidate, index) => (
                               <li key={candidate.id} className="min-w-0">
                                 <div className="flex items-start justify-between gap-3">
-                                  <p className="min-w-0 break-words text-xs font-medium text-slate-700">
-                                    {candidate.name}
-                                    {highestVotes > 0 && candidate.votes === highestVotes ? (
-                                      <span className="ml-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold text-emerald-800">
-                                        {tiedLeaders ? "Tied" : "Winner"}
+                                  <div className="flex min-w-0 items-center gap-2.5">
+                                    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-white text-[9px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200">
+                                      {index + 1}
+                                    </span>
+                                    {candidate.photoUrl ? (
+                                      <Image
+                                        src={candidate.photoUrl}
+                                        alt={`${candidate.name} profile`}
+                                        width={48}
+                                        height={48}
+                                        unoptimized
+                                        className="size-12 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
+                                      />
+                                    ) : (
+                                      <span
+                                        aria-hidden="true"
+                                        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-900 ring-2 ring-white"
+                                      >
+                                        {candidate.name
+                                          .split(/\s+/)
+                                          .slice(0, 2)
+                                          .map((part) => part.charAt(0).toUpperCase())
+                                          .join("")}
                                       </span>
-                                    ) : null}
-                                  </p>
+                                    )}
+                                    <div className="min-w-0">
+                                      <p className="break-words text-xs font-medium text-slate-700">
+                                        {candidate.name}
+                                      </p>
+                                      {highestVotes > 0 && candidate.votes === highestVotes ? (
+                                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold text-emerald-800">
+                                          {election.status === "OPEN"
+                                            ? tiedLeaders ? "Currently tied" : "Currently leading"
+                                            : tiedLeaders ? "Tied" : "Winner"}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
                                   <p className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-800">
                                     {candidate.votes}{" "}
                                     <span className="font-normal text-slate-500">
@@ -236,7 +336,7 @@ function ResultsPanel({ data }: { data: VoterResultsData }) {
                           </ul>
                         ) : (
                           <p className="mt-3 text-xs text-slate-500">
-                            No approved nominees were included for this position.
+                            No approved candidates were included for this position.
                           </p>
                         )}
                       </section>
@@ -400,7 +500,11 @@ export default function VotersPortal({
   section: PortalSection;
 }) {
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-8 sm:py-9">
+    <div
+      className={`mx-auto max-w-[1500px] px-4 py-6 sm:px-8 sm:py-9 ${
+        section === "nominees" || section === "results" ? "w-full" : ""
+      }`}
+    >
       {data?.databaseStatus === "unavailable" ? (
         <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-800 ring-1 ring-amber-200">
@@ -463,7 +567,7 @@ export default function VotersPortal({
       ) : null}
 
       {section === "results" && results ? (
-        <ResultsPanel data={results} />
+        <ElectionResultsPanel data={results} />
       ) : null}
 
     </div>

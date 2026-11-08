@@ -31,7 +31,6 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
       prisma.candidate.findMany({
         where: {
           status: "APPROVED",
-          election: { status: { in: ["DRAFT", "SCHEDULED", "PUBLISHED", "OPEN"] } },
         },
         orderBy: [
           { election: { startsAt: "asc" } },
@@ -84,22 +83,24 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
 
   try {
     await synchronizeElectionStatuses();
-    const closedElectionFilter = {
+    const resultsElectionFilter = {
       election: {
-        is: { status: { in: ["CLOSED", "RESULTS_PUBLISHED"] } },
+        is: { status: { in: ["OPEN", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"] } },
       },
     } satisfies Prisma.BallotWhereInput & Prisma.BallotSelectionWhereInput;
     const [elections, ballotCounts, selectionCounts] = await Promise.all([
       prisma.election.findMany({
         where: {
-          status: { in: ["CLOSED", "RESULTS_PUBLISHED"] },
+          status: { in: ["OPEN", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"] },
         },
         orderBy: [{ endsAt: "desc" }, { updatedAt: "desc" }],
         select: {
           id: true,
           title: true,
+          status: true,
           timezone: true,
           resultsPublishedAt: true,
+          startsAt: true,
           endsAt: true,
           positions: {
             orderBy: { displayOrder: "asc" },
@@ -108,7 +109,12 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
               title: true,
               candidates: {
                 where: { status: { in: ["APPROVED", "INACTIVE"] } },
-                select: { id: true, nameCiphertext: true },
+                select: {
+                  id: true,
+                  nameCiphertext: true,
+                  photoData: true,
+                  photoMimeType: true,
+                },
               },
             },
           },
@@ -116,12 +122,12 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
       }),
       prisma.ballot.groupBy({
         by: ["electionId"],
-        where: closedElectionFilter,
+        where: resultsElectionFilter,
         _count: { _all: true },
       }),
       prisma.ballotSelection.groupBy({
         by: ["electionId", "positionId", "candidateId"],
-        where: closedElectionFilter,
+        where: resultsElectionFilter,
         _count: { _all: true },
       }),
     ]);
@@ -141,14 +147,21 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
       elections: elections.map((election) => ({
         id: election.id,
         title: election.title,
+        status: election.status === "OPEN" ? "OPEN" as const : "FINAL" as const,
         resultsAvailableAt:
-          (election.resultsPublishedAt ?? election.endsAt)?.toISOString() ?? null,
+          (election.status === "OPEN"
+            ? election.startsAt
+            : election.resultsPublishedAt ?? election.endsAt)?.toISOString() ?? null,
         timezone: election.timezone,
         ballotsCast: ballotsByElection.get(election.id) ?? 0,
         positions: election.positions.map((position) => {
           const candidates = position.candidates.map((candidate) => ({
             id: candidate.id,
             name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
+            photoUrl:
+              candidate.photoData && candidate.photoMimeType === "image/webp"
+                ? `/admin/candidates/${candidate.id}/photo`
+                : null,
             votes:
               votesByCandidate.get(`${election.id}:${position.id}:${candidate.id}`) ?? 0,
           }));

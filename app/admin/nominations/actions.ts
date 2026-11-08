@@ -129,6 +129,7 @@ export async function reviewNomination(
     }
 
     revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     revalidatePath("/admin/nominations");
     revalidatePath("/vote");
     revalidatePath("/vote/nominees");
@@ -244,6 +245,7 @@ export async function removeApprovedNomination(
     }
 
     revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     revalidatePath("/admin/nominations");
     revalidatePath("/vote");
     revalidatePath("/vote/nominees");

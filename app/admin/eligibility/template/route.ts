@@ -24,9 +24,9 @@ export async function GET(request: Request) {
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Eligible voters");
-  worksheet.addRow(["Name"]);
+  worksheet.addRow(["Name", "Phone Number"]);
   worksheet.getRow(1).font = { bold: true };
-  worksheet.columns = [{ width: 36 }];
+  worksheet.columns = [{ width: 36 }, { width: 24 }];
 
   const bytes = await workbook.xlsx.writeBuffer();
   return new NextResponse(bytes, {

@@ -1,5 +1,9 @@
 import ExcelJS from "exceljs";
-import { createVoterNameLookupHash } from "@/lib/voter-data-crypto";
+import {
+  createVoterNameLookupHash,
+  createVoterPhoneLookupHash,
+  normalizePhoneNumber,
+} from "@/lib/voter-data-crypto";
 import type { EligibilityImportRowResult } from "@/lib/eligibility-import-types";
 
 const MAX_IMPORT_ROWS = 5000;
@@ -42,13 +46,19 @@ function resolveHeaders(worksheet: ExcelJS.Worksheet) {
   const findColumn = (aliases: string[]) =>
     aliases.map((alias) => headers.get(alias)).find((column) => column !== undefined);
   const name = findColumn(["name", "fullname", "votername"]);
+  const phone = findColumn(["phone", "phonenumber", "mobile", "mobilenumber"]);
   if (!name) {
     throw new EligibilitySpreadsheetError(
       "The first row must include a Name column.",
     );
   }
+  if (!phone) {
+    throw new EligibilitySpreadsheetError(
+      "The first row must include a Phone column.",
+    );
+  }
 
-  return { name };
+  return { name, phone };
 }
 
 function cellValue(worksheet: ExcelJS.Worksheet, row: number, column?: number) {
@@ -79,14 +89,17 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
 
   const columns = resolveHeaders(worksheet);
   const seenIdentities = new Set<string>();
+  const seenPhoneNumbers = new Set<string>();
   const rows: EligibilityImportRowResult[] = [];
 
   for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const rowErrors: string[] = [];
     let name = "";
+    let phone = "";
 
     try {
       name = cellValue(worksheet, rowNumber, columns.name);
+      phone = cellValue(worksheet, rowNumber, columns.phone);
     } catch (error) {
       if (error instanceof EligibilitySpreadsheetError) {
         rowErrors.push("unsupported_cell_value");
@@ -95,7 +108,7 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
       }
     }
 
-    if (!name && rowErrors.length === 0) {
+    if (!name && !phone && rowErrors.length === 0) {
       rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["empty_row"] });
       continue;
     }
@@ -103,17 +116,33 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
     if (!name || name.length > 150) {
       rowErrors.push("invalid_name");
     }
+    const normalizedPhone = normalizePhoneNumber(phone);
+    const phoneDigits = normalizedPhone.replace(/\D/g, "");
+    if (
+      !phone ||
+      !/^\+?[\d\s().-]+$/.test(phone) ||
+      phoneDigits.length < 7 ||
+      phoneDigits.length > 15
+    ) {
+      rowErrors.push("invalid_phone");
+    }
     if (rowErrors.length > 0) {
       rows.push({ rowNumber, status: "REJECTED", errorCodes: rowErrors });
       continue;
     }
 
     const lookupHash = createVoterNameLookupHash(name);
+    const phoneLookupHash = createVoterPhoneLookupHash(normalizedPhone);
     if (seenIdentities.has(lookupHash)) {
       rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["duplicate_in_upload"] });
       continue;
     }
+    if (seenPhoneNumbers.has(phoneLookupHash)) {
+      rows.push({ rowNumber, status: "REJECTED", errorCodes: ["duplicate_phone_in_upload"] });
+      continue;
+    }
     seenIdentities.add(lookupHash);
+    seenPhoneNumbers.add(phoneLookupHash);
     rows.push({
       rowNumber,
       status: "ACCEPTED",
@@ -121,6 +150,8 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
       voter: {
         name: name.normalize("NFKC").trim().replace(/\s+/g, " "),
         lookupHash,
+        phone: normalizedPhone,
+        phoneLookupHash,
       },
     });
   }

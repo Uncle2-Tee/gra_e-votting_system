@@ -86,6 +86,18 @@ export function createVoterNameLookupHash(name: string) {
     .digest("hex");
 }
 
+export function createVoterPhoneLookupHash(phone: string) {
+  return createHmac("sha256", deriveKey("voter-phone-lookup"))
+    .update(normalizePhoneNumber(phone), "utf8")
+    .digest("hex");
+}
+
+export function createVoterCredentialDigest(credential: string) {
+  return createHmac("sha256", deriveKey("voter-credential"))
+    .update(credential, "utf8")
+    .digest("hex");
+}
+
 export function createNominationLookupHash(
   name: string,
   email: string,

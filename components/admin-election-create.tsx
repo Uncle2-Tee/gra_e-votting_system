@@ -26,7 +26,7 @@ export default function AdminElectionCreate() {
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Set up the next vote</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Publish positions first to receive and review nominations before voting begins, or set the voting dates now. Previous voting cycles remain in the schedule history.
+            All positions in a voting cycle share one opening and closing time. Publish positions first and set the shared schedule later, or set both up now. Previous voting cycles remain in the schedule history.
           </p>
         </div>
       </div>
@@ -56,7 +56,7 @@ export default function AdminElectionCreate() {
         <div className="text-xs font-medium text-slate-700 sm:col-span-2">
           Voting time zone
           <p id="election-schedule-help" className="mt-1.5 text-xs font-normal text-slate-600">
-            {ELECTION_TIMEZONE}. Voting opens and closes at these times; schedule status updates whenever the system is accessed.
+            {ELECTION_TIMEZONE}. These opening and closing times apply to every position in this voting cycle.
           </p>
         </div>
         <div className="text-xs font-medium text-slate-700 sm:col-span-2">
