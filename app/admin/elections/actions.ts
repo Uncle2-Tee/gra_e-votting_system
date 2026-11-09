@@ -525,9 +525,13 @@ export async function updateElectionSchedule(
 
       const now = new Date();
       const status = getEffectiveElectionStatus(election, now);
-      if (!canAcceptPreElectionChanges(status) && status !== "OPEN") {
+      if (
+        !canAcceptPreElectionChanges(status) &&
+        status !== "OPEN" &&
+        status !== "CLOSED"
+      ) {
         return {
-          error: "Only elections that have not opened or are currently open can have their voting times changed.",
+          error: "Only elections that have not opened or are currently open or closed can have their voting times changed.",
         };
       }
 
@@ -548,7 +552,8 @@ export async function updateElectionSchedule(
         return { error: "The voting closing time must be after its opening time." };
       }
 
-      const nextStatus: ElectionStatus = status === "DRAFT" ? "SCHEDULED" : status;
+      const nextStatus: ElectionStatus =
+        status === "DRAFT" || status === "CLOSED" ? "SCHEDULED" : status;
       const updated = await transaction.election.update({
         where: { id: electionId },
         data: { startsAt, endsAt, status: nextStatus },

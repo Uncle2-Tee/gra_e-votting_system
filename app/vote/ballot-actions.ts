@@ -5,12 +5,10 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { sendArkeselSms } from "@/lib/arkesel-sms";
 import {
   createVoterCredentialDigest,
   createVoterNameLookupHash,
   createVoterPhoneLookupHash,
-  decryptVoterField,
 } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
 import { getVoterCredentialCookieName } from "@/lib/voter-ballot-session";
@@ -28,13 +26,6 @@ function readText(formData: FormData, key: string) {
 
 function validId(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-async function sendVoterId(phone: string, electionTitle: string, voterId: string) {
-  await sendArkeselSms(
-    [phone],
-    `${electionTitle}: your GRA E-Voting ID is ${voterId}. Keep it private; use it once for each position.`,
-  );
 }
 
 export async function requestVoterId(
@@ -56,16 +47,11 @@ export async function requestVoterId(
   if (phoneDigits.length < 7 || phoneDigits.length > 15) {
     return { ...INITIAL_STATE, error: "Enter a valid phone number." };
   }
-  if (!process.env.ARKESEL_API_KEY || !process.env.ARKESEL_SENDER_ID) {
-    console.error("Voter ID request is unavailable because the SMS provider is not configured.");
-    return { ...INITIAL_STATE, error: "SMS delivery is not configured. Contact the election administrator." };
-  }
-
   const now = new Date();
   const voterId = `GRA-${randomBytes(24).toString("base64url")}`;
   const voterCredentialDigest = createVoterCredentialDigest(voterId);
   let issueResult:
-    | { status: "issued"; phone: string; electionTitle: string; endsAt: Date }
+    | { status: "issued"; endsAt: Date }
     | { status: "unavailable" }
     | { status: "cooldown" }
     | { status: "rate_limited" };
@@ -74,26 +60,20 @@ export async function requestVoterId(
     issueResult = await prisma.$transaction(async (transaction) => {
       const matchedRows = await transaction.$queryRaw<{
         id: string;
-        eligibilityStatus: string;
-        voterStatus: string;
         phoneCiphertext: string | null;
         startsAt: Date | null;
         endsAt: Date | null;
         electionStatus: string;
-        electionTitle: string;
         voterCredentialIssuedAt: Date | null;
         voterCredentialWindowStartedAt: Date | null;
         voterCredentialRequestCount: number;
       }[]>`
         SELECT
           ev."id",
-          ev."status" AS "eligibilityStatus",
-          v."status" AS "voterStatus",
           v."phoneCiphertext",
           e."startsAt",
           e."endsAt",
           e."status" AS "electionStatus",
-          e."title" AS "electionTitle",
           ev."voterCredentialIssuedAt",
           ev."voterCredentialWindowStartedAt",
           ev."voterCredentialRequestCount"
@@ -148,8 +128,6 @@ export async function requestVoterId(
 
       return {
         status: "issued" as const,
-        phone: decryptVoterField(matched.phoneCiphertext, "voter-phone"),
-        electionTitle: matched.electionTitle,
         endsAt: matched.endsAt,
       };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -166,7 +144,7 @@ export async function requestVoterId(
   if (issueResult.status === "unavailable") {
     return {
       ...INITIAL_STATE,
-      message: "If the supplied details match the eligible voter roster and the election is open, an ID will be sent.",
+      message: "If the supplied details match the eligible voter roster and the election is open, you can continue to your ballot.",
     };
   }
   if (issueResult.status === "cooldown") {
@@ -174,19 +152,6 @@ export async function requestVoterId(
   }
   if (issueResult.status === "rate_limited") {
     return { ...INITIAL_STATE, error: "The voter ID request limit was reached. Try again in an hour." };
-  }
-
-  try {
-    await sendVoterId(issueResult.phone, issueResult.electionTitle, voterId);
-  } catch (error) {
-    await prisma.electionVoter.updateMany({
-      where: { voterCredentialDigest },
-      data: { voterCredentialDigest: null },
-    });
-    console.error("Voter ID SMS delivery failed.", {
-      errorName: error instanceof Error ? error.name : "UnknownError",
-    });
-    return { ...INITIAL_STATE, error: "The voter ID could not be sent. Please wait one minute and try again." };
   }
 
   const cookieStore = await cookies();
@@ -204,7 +169,7 @@ export async function requestVoterId(
     path: "/vote/ballot",
     maxAge,
   });
-  redirect(`/vote/ballot?electionId=${encodeURIComponent(electionId)}&idSent=1`);
+  redirect(`/vote/ballot?electionId=${encodeURIComponent(electionId)}&verified=1`);
 }
 
 export async function submitPositionVote(

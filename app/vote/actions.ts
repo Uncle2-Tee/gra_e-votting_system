@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import sharp from "sharp";
-import { sendArkeselSms } from "@/lib/arkesel-sms";
 import {
   createNominationLookupHash,
   encryptVoterField,
@@ -128,12 +127,7 @@ export async function submitNominationApplication(
     const photoData = await processNominationPhoto(photoEntry);
     const position = await prisma.position.findUnique({
       where: { id: positionId },
-      select: {
-        id: true,
-        electionId: true,
-        title: true,
-        election: { select: { title: true } },
-      },
+      select: { id: true, electionId: true },
     });
     if (!position) {
       return { ...INITIAL_STATE, error: "That nomination form is no longer available." };
@@ -259,26 +253,6 @@ export async function submitNominationApplication(
     revalidatePath("/vote/nominate");
     revalidatePath("/admin", "layout");
     revalidatePath("/admin/nominations");
-    const adminPhone = process.env.ADMIN_NOTIFICATION_PHONE;
-    if (!adminPhone) {
-      console.error("Pending nomination SMS notification was not sent: ADMIN_NOTIFICATION_PHONE is not configured.");
-    } else {
-      try {
-        await sendArkeselSms(
-          [adminPhone],
-          `New nomination pending approval for ${position.title} (${position.election.title}). Review it in the admin portal.`,
-        );
-      } catch (error) {
-        const errorCode =
-          error instanceof Error && /\((\d{3})\)$/.test(error.message)
-            ? error.message.match(/\((\d{3})\)$/)?.[1] ?? "UNKNOWN"
-            : "UNKNOWN";
-        console.error("Pending nomination SMS notification failed.", {
-          errorName: error instanceof Error ? error.name : "UnknownError",
-          errorCode,
-        });
-      }
-    }
     return { error: null, success: true };
   } catch (error) {
     if (error instanceof InvalidNominationPhotoError) {

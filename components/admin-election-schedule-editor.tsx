@@ -46,8 +46,10 @@ export default function AdminElectionScheduleEditor({
 }) {
   const canEdit =
     ["DRAFT", "SCHEDULED", "PUBLISHED"].includes(election.status) ||
-    election.status === "OPEN";
+    election.status === "OPEN" ||
+    election.status === "CLOSED";
   const isOpen = election.status === "OPEN";
+  const isClosed = election.status === "CLOSED";
   const initialStartsAt = toLocalDateTime(election.startsAt, election.timezone);
   const boundAction = useMemo(
     () => updateElectionSchedule.bind(null, election.id),
@@ -65,7 +67,7 @@ export default function AdminElectionScheduleEditor({
       <summary className="w-fit cursor-pointer list-none rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">
         <span className="inline-flex items-center gap-1.5">
           <CalendarClock className="size-3.5" />
-          Edit voting time
+          {isClosed ? "Schedule election reopening" : "Edit voting time"}
         </span>
       </summary>
       <form
@@ -116,7 +118,9 @@ export default function AdminElectionScheduleEditor({
           Times use {election.timezone}.{" "}
           {isOpen
             ? "The schedule is shared by every position. Only the closing time can be changed while voting is open."
-            : "This schedule applies to every position in the election. Opening must remain in the future, and closing must be later than opening."}
+            : isClosed
+              ? "Choose a future opening and closing time to reopen this election. Votes already recorded will be kept, and voters can only vote for positions they have not already voted in."
+              : "This schedule applies to every position in the election. Opening must remain in the future, and closing must be later than opening."}
         </p>
         {state.error ? (
           <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:col-span-2">

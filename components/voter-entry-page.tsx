@@ -33,7 +33,9 @@ export default function VoterEntryPage({
         <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
           Start voting
         </h1>
-       
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          Verify your voter-roster details to access your election ballot.
+        </p>
       </header>
 
       <div className="grid gap-5">
@@ -96,7 +98,7 @@ export default function VoterEntryPage({
               <div>
                 <h2 className="text-base font-semibold text-slate-950">Confirm your voter details</h2>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Enter your name and phone number exactly as recorded in the eligible voter roster. Your ID is sent only to the roster phone number.
+                  Enter your name and phone number exactly as recorded in the eligible voter roster.
                 </p>
               </div>
 
@@ -158,7 +160,7 @@ export default function VoterEntryPage({
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-wait disabled:opacity-60"
               >
                 <KeyRound className="size-4" />
-                {pending ? "Verifying and sending ID…" : "Verify details and send voter ID"}
+                {pending ? "Verifying your details…" : "Verify details and continue to ballot"}
               </button>
             </form>
           )}

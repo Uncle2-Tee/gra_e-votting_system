@@ -178,14 +178,16 @@ export default function VoterBallotPage({
   elections,
   enabled,
   initialElectionId,
-  idSent,
+  identityVerified,
+  voterId: verifiedVoterId,
   hasVoterSession,
   submittedPositionIds,
 }: {
   elections: BallotElection[];
   enabled: boolean;
   initialElectionId: string;
-  idSent: boolean;
+  identityVerified: boolean;
+  voterId: string;
   hasVoterSession: boolean;
   submittedPositionIds: string[];
 }) {
@@ -258,17 +260,29 @@ export default function VoterBallotPage({
         </div>
       </header>
 
-      {idSent ? (
+      {identityVerified && hasVoterSession ? (
         <p role="status" className="mt-5 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-900">
           <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-          Your voter ID was sent to the phone number in the roster. Your ballot is ready below.
+          Your details are verified. Your voter ID is shown below, and your ballot is ready.
         </p>
+      ) : null}
+
+      {hasVoterSession && /^GRA-[A-Za-z0-9_-]{32}$/.test(verifiedVoterId) ? (
+        <section aria-label="Your voter ID" className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-semibold text-slate-800">Your voter ID</p>
+          <p className="mt-2 select-all break-all rounded-lg bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-900">
+            {verifiedVoterId}
+          </p>
+          <p className="mt-2 text-[11px] leading-5 text-slate-500">
+            Keep this ID private. You can use it to recover ballot access if needed.
+          </p>
+        </section>
       ) : null}
 
       {!hasVoterSession ? (
         <section className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <label className="block text-xs font-semibold text-blue-950">
-            Enter your voter ID from the SMS to unlock ballot submission
+            Enter your voter ID to unlock ballot submission
             <input
               value={voterId}
               onChange={(event) => setVoterId(event.currentTarget.value)}
@@ -279,7 +293,7 @@ export default function VoterBallotPage({
             />
           </label>
           <p className="mt-2 text-[11px] text-blue-900">
-            ID not received? <Link href="/vote" className="font-semibold underline">Request a voter ID</Link>.
+            Need to verify your details or generate an ID? <Link href="/vote" className="font-semibold underline">Return to voter access</Link>.
           </p>
         </section>
       ) : (

@@ -12,7 +12,7 @@ import { getVoterCredentialCookieName } from "@/lib/voter-ballot-session";
 async function BallotPageContent({
   searchParams,
 }: {
-  searchParams: Promise<{ electionId?: string; idSent?: string }>;
+  searchParams: Promise<{ electionId?: string; verified?: string }>;
 }) {
   await connection();
   const query = await searchParams;
@@ -45,10 +45,12 @@ async function BallotPageContent({
   }) : [];
   const cookieStore = await cookies();
   const credentialByDigest = new Map<string, string>();
+  const voterIdByElection = new Map<string, string>();
   for (const election of allElections) {
     const voterId = cookieStore.get(getVoterCredentialCookieName(election.id))?.value;
     if (voterId && /^GRA-[A-Za-z0-9_-]{32}$/.test(voterId)) {
       credentialByDigest.set(createVoterCredentialDigest(voterId), election.id);
+      voterIdByElection.set(election.id, voterId);
     }
   }
   const validSessions = credentialByDigest.size > 0
@@ -108,7 +110,12 @@ async function BallotPageContent({
     <VoterBallotPage
       enabled={enabled}
       initialElectionId={selectedElection?.id ?? ""}
-      idSent={query.idSent === "1"}
+      identityVerified={query.verified === "1"}
+      voterId={
+        selectedElection && selectedSession
+          ? voterIdByElection.get(selectedElection.id) ?? ""
+          : ""
+      }
       hasVoterSession={
         selectedElection ? authenticatedElectionIds.has(selectedElection.id) : false
       }
@@ -134,7 +141,7 @@ async function BallotPageContent({
 export default function BallotPage({
   searchParams,
 }: {
-  searchParams: Promise<{ electionId?: string; idSent?: string }>;
+  searchParams: Promise<{ electionId?: string; verified?: string }>;
 }) {
   return (
     <Suspense
