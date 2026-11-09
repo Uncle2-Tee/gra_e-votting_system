@@ -40,7 +40,7 @@ export default function VoterDashboardShell({
     <main className="min-h-dvh bg-[#f7f8f6] text-slate-900 lg:pl-[272px]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y-2 border-r-2 border-emerald-700/50 bg-white shadow-lg shadow-emerald-950/[0.08] lg:flex lg:h-dvh lg:max-h-dvh">
         <Link
-          href="/vote"
+          href="/vote/overview"
           className="flex h-[76px] items-center gap-3 border-b border-slate-100 px-6"
           aria-label="GRA E-Voting dashboard"
         >
@@ -90,7 +90,7 @@ export default function VoterDashboardShell({
       <div className="flex min-h-dvh min-w-0 flex-col">
         <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-emerald-500 bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
           <div className="flex items-center justify-between gap-3">
-            <Link href="/vote" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting voter dashboard">
+            <Link href="/vote/overview" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting voter dashboard">
               <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <BrandLogo className="size-full object-contain" />
               </span>
