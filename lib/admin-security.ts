@@ -15,7 +15,8 @@ import { decryptVoterField, encryptVoterField } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE = "gra_admin_session";
-const SESSION_LIFETIME_MS = 8 * 60 * 60 * 1000;
+const SESSION_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60;
+const SESSION_EXPIRES_AT = new Date("9999-12-31T23:59:59.999Z");
 const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
 export type AdminLoginCredentials = {
@@ -203,13 +204,12 @@ function hashSessionToken(token: string) {
 
 export async function createAdminSession(userId: string) {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS);
 
   await prisma.adminSession.create({
     data: {
-      userId,
+      user: { connect: { id: userId } },
       tokenHash: hashSessionToken(token),
-      expiresAt,
+      expiresAt: SESSION_EXPIRES_AT,
     },
   });
 
@@ -219,8 +219,7 @@ export async function createAdminSession(userId: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/admin",
-    expires: expiresAt,
-    maxAge: SESSION_LIFETIME_MS / 1000,
+    maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
   });
 }
 
