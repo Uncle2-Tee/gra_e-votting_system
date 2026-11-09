@@ -88,7 +88,7 @@ export default function AdminDashboardShell({
           className="flex h-[76px] items-center gap-3 border-b border-slate-100 px-6"
           aria-label="GRA E-Voting system overview"
         >
-          <span className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <span className="flex size-14 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
             <BrandLogo className="size-full object-contain" />
           </span>
           <span className="min-w-0">
@@ -149,7 +149,7 @@ export default function AdminDashboardShell({
         <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-brand-blue bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <Link href="/admin" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting administration">
-              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <BrandLogo className="size-full object-contain" />
               </span>
               <span className="min-w-0">
