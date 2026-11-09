@@ -275,55 +275,67 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
 export async function getPendingNominationData(): Promise<PendingNominationData> {
   await connection();
 
-  try {
-    const [applications, approvedApplications] = await Promise.all([
-      prisma.candidate.findMany({
-        where: { status: "PENDING" },
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          nameCiphertext: true,
-          applicantEmailCiphertext: true,
-          applicantPhoneCiphertext: true,
-          biography: true,
-          photoData: true,
-          photoMimeType: true,
-          createdAt: true,
-          election: { select: { title: true } },
-          position: { select: { title: true } },
-        },
-      }),
-      prisma.candidate.findMany({
-        where: { status: "APPROVED" },
-        orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
-        select: {
-          id: true,
-          nameCiphertext: true,
-          applicantEmailCiphertext: true,
-          applicantPhoneCiphertext: true,
-          biography: true,
-          photoData: true,
-          photoMimeType: true,
-          createdAt: true,
-          election: { select: { title: true } },
-          position: { select: { title: true } },
-        },
-      }),
-    ]);
+  for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
+    try {
+      const [applications, approvedApplications] = await Promise.all([
+        prisma.candidate.findMany({
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            nameCiphertext: true,
+            applicantEmailCiphertext: true,
+            applicantPhoneCiphertext: true,
+            biography: true,
+            photoData: true,
+            photoMimeType: true,
+            createdAt: true,
+            election: { select: { title: true } },
+            position: { select: { title: true } },
+          },
+        }),
+        prisma.candidate.findMany({
+          where: { status: "APPROVED" },
+          orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            nameCiphertext: true,
+            applicantEmailCiphertext: true,
+            applicantPhoneCiphertext: true,
+            biography: true,
+            photoData: true,
+            photoMimeType: true,
+            createdAt: true,
+            election: { select: { title: true } },
+            position: { select: { title: true } },
+          },
+        }),
+      ]);
 
-    return {
-      applications: applications.map(mapAdminNomination),
-      approvedApplications: approvedApplications.map(mapAdminNomination),
-      error: null,
-    };
-  } catch (error) {
-    logNominationDataError("administrator nomination queue", error);
-    return {
-      applications: [],
-      approvedApplications: [],
-      error: "Nomination applications could not be loaded from the database.",
-    };
+      return {
+        applications: applications.map(mapAdminNomination),
+        approvedApplications: approvedApplications.map(mapAdminNomination),
+        error: null,
+      };
+    } catch (error) {
+      if (
+        attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 &&
+        isRetryableDatabaseError(error)
+      ) {
+        await delay(300 * (attempt + 1));
+        continue;
+      }
+
+      logNominationDataError("administrator nomination queue", error, attempt + 1);
+      return {
+        applications: [],
+        approvedApplications: [],
+        error: "Nomination applications could not be loaded from the database.",
+      };
+    }
   }
+
+  throw new Error("Administrator nomination queue retries ended unexpectedly.");
 }
 
 function mapAdminNomination(application: {

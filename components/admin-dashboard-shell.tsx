@@ -11,7 +11,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  UsersRound,
   Vote,
   X,
 } from "lucide-react";
@@ -29,7 +28,6 @@ const navigationGroups = [
     items: [
       { id: "elections", label: "Voting setup", href: "/admin/elections", icon: Vote },
       { id: "nominations", label: "Nomination review", href: "/admin/nominations", icon: BadgeCheck },
-      { id: "voters", label: "Voter registry", href: "/admin/voters", icon: UsersRound },
       { id: "eligibility", label: "Eligibility & imports", href: "/admin/eligibility", icon: FileSpreadsheet },
     ],
   },
@@ -83,7 +81,7 @@ export default function AdminDashboardShell({
   const activePage = pathname.split("/")[2] ?? "overview";
 
   return (
-    <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
+    <div className="min-h-screen bg-[#f6f9fc] text-slate-900">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y-2 border-r-2 border-emerald-700/50 bg-white shadow-lg shadow-emerald-950/[0.08] lg:flex">
         <Link
           href="/admin"
@@ -149,7 +147,7 @@ export default function AdminDashboardShell({
       </aside>
 
       <div className="lg:pl-[272px]">
-        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-emerald-500 bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
+        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-[#ffd500] bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <Link href="/admin" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting administration">
               <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -170,14 +168,14 @@ export default function AdminDashboardShell({
                 aria-controls="admin-mobile-navigation"
                 aria-label={mobileNavigationOpen ? "Close navigation" : "Open navigation"}
                 onClick={() => setMobileNavigationOpen((open) => !open)}
-                className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+                className="flex size-11 items-center justify-center rounded-xl border border-brand-blue/35 bg-white text-brand-navy shadow-sm hover:border-brand-gold hover:bg-amber-50"
               >
                 {mobileNavigationOpen ? <X className="size-5" /> : <Menu className="size-5" />}
               </button>
             </div>
           </div>
           {mobileNavigationOpen ? (
-            <nav id="admin-mobile-navigation" aria-label="Administrator navigation" className="mt-3 border-t border-slate-100 pt-2">
+            <nav id="admin-mobile-navigation" aria-label="Administrator navigation" className="mt-3 space-y-1.5 rounded-xl border border-brand-blue/30 bg-white/95 p-2 shadow-lg shadow-brand-navy/10">
               {navigationGroups.flatMap((group) => group.items).map(({ id, label, href, icon: Icon }) => {
                 const active = id === activePage;
                 return (
@@ -187,17 +185,17 @@ export default function AdminDashboardShell({
                     prefetch={true}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setMobileNavigationOpen(false)}
-                    className={`group flex min-h-11 min-w-0 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 ${
+                    className={`group flex min-h-11 min-w-0 items-center gap-3 rounded-lg border px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-blue ${
                       active
-                        ? "border-emerald-700 bg-emerald-50/70 font-semibold text-emerald-950"
-                        : "border-transparent text-slate-600 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-950 focus-visible:border-emerald-500 focus-visible:bg-emerald-50 focus-visible:text-emerald-950"
+                        ? "border-brand-gold bg-amber-50 font-semibold text-brand-navy shadow-sm"
+                        : "border-brand-blue/15 text-slate-600 hover:border-brand-blue/40 hover:bg-sky-50 hover:text-brand-navy focus-visible:border-brand-blue/40 focus-visible:bg-sky-50 focus-visible:text-brand-navy"
                     }`}
                   >
-                    <Icon className={`size-4 shrink-0 ${active ? "text-emerald-800" : "text-slate-400 group-hover:text-emerald-700 group-focus-visible:text-emerald-700"}`} strokeWidth={1.8} />
+                    <Icon className={`size-4 shrink-0 ${active ? "text-brand-navy" : "text-slate-400 group-hover:text-brand-blue group-focus-visible:text-brand-blue"}`} strokeWidth={1.8} />
                     <span className="min-w-0 truncate">{label}</span>
                     <NavigationLinkStatus />
                     {id === "nominations" ? pendingNominationBadge : active ? (
-                      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-700" />
+                      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-gold ring-1 ring-brand-navy/20" />
                     ) : null}
                   </Link>
                 );

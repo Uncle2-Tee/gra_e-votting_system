@@ -360,32 +360,32 @@ function Overview({ data }: { data: VoterPortalData }) {
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-2xl bg-[#123b32] px-5 py-7 text-white sm:px-9 sm:py-10">
+      <section className="relative overflow-hidden rounded-2xl border border-brand-navy/20 bg-gradient-to-br from-brand-navy via-emerald-900 to-brand-blue px-5 py-7 text-white shadow-lg shadow-brand-navy/10 sm:px-9 sm:py-10">
         <div className="pointer-events-none absolute -right-14 -top-32 size-[340px] rounded-full border border-white/[0.08]" />
-        <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-emerald-300/[0.08] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-brand-gold/[0.12] blur-3xl" />
         <div className="relative max-w-2xl">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-emerald-100 uppercase">
-            <span className="size-1.5 rounded-full bg-emerald-300" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-sky-100 uppercase">
+            <span className="size-1.5 rounded-full bg-brand-gold" />
             Your voice shapes the future
           </span>
           <h1 className="mt-5 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
             Welcome to your{" "}
-            <span className="text-emerald-200">election dashboard.</span>
+            <span className="text-sky-200">election dashboard.</span>
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-50/75">
+          <p className="mt-3 max-w-xl text-sm leading-6 text-sky-50/80">
             Review approved candidates or submit a nomination for an available
             position. Administrators review every application before publication.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-50"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-xs font-semibold text-brand-navy transition hover:bg-sky-50"
               href="/vote/nominate"
             >
               Start a nomination
               <ArrowRight className="size-3.5" />
             </Link>
             <Link
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 px-4 text-xs font-semibold text-white transition hover:bg-white/10"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/25 bg-white/[0.06] px-4 text-xs font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.12]"
               href="/vote/nominees"
             >
               Browse approved nominees

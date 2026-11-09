@@ -24,7 +24,7 @@ async function AuthenticatedDashboard({
       throw error;
     }
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-[#f7f8f6] px-4 text-slate-900 sm:px-5">
+      <main className="flex min-h-dvh items-center justify-center bg-[#f6f9fc] px-4 text-slate-900 sm:px-5">
         <section className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-7 shadow-sm">
           <p className="text-xs font-semibold tracking-[0.14em] text-amber-700 uppercase">
             Administrator access unavailable

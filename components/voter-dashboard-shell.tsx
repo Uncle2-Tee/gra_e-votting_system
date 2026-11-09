@@ -37,7 +37,7 @@ export default function VoterDashboardShell({
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   return (
-    <main className="min-h-dvh bg-[#f7f8f6] text-slate-900 lg:pl-[272px]">
+    <main className="min-h-dvh bg-[#f6f9fc] text-slate-900 lg:pl-[272px]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col overflow-hidden rounded-r-2xl border-y-2 border-r-2 border-emerald-700/50 bg-white shadow-lg shadow-emerald-950/[0.08] lg:flex lg:h-dvh lg:max-h-dvh">
         <Link
           href="/vote/overview"
@@ -88,7 +88,7 @@ export default function VoterDashboardShell({
       </aside>
 
       <div className="flex min-h-dvh min-w-0 flex-col">
-        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-emerald-500 bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
+        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-[#ffd500] bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
           <div className="flex items-center justify-between gap-3">
             <Link href="/vote/overview" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting voter dashboard">
               <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -105,13 +105,13 @@ export default function VoterDashboardShell({
               aria-controls="voter-mobile-navigation"
               aria-label={mobileNavigationOpen ? "Close navigation" : "Open navigation"}
               onClick={() => setMobileNavigationOpen((open) => !open)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-brand-blue/35 bg-white text-brand-navy shadow-sm hover:border-brand-gold hover:bg-amber-50"
             >
               {mobileNavigationOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
           </div>
           {mobileNavigationOpen ? (
-            <nav id="voter-mobile-navigation" aria-label="Voter dashboard navigation" className="mt-3 border-t border-slate-100 pt-2">
+            <nav id="voter-mobile-navigation" aria-label="Voter dashboard navigation" className="mt-3 space-y-1.5 rounded-xl border border-brand-blue/30 bg-white/95 p-2 shadow-lg shadow-brand-navy/10">
               {navigation.map(({ section, label, href, icon: Icon }) => {
                 const active = activePage.section === section;
                 return (
@@ -121,16 +121,16 @@ export default function VoterDashboardShell({
                     prefetch={true}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setMobileNavigationOpen(false)}
-                    className={`group flex min-h-11 min-w-0 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 ${
+                    className={`group flex min-h-11 min-w-0 items-center gap-3 rounded-lg border px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-blue ${
                       active
-                        ? "border-emerald-700 bg-emerald-50/70 font-semibold text-emerald-950"
-                        : "border-transparent text-slate-600 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-950 focus-visible:border-emerald-500 focus-visible:bg-emerald-50 focus-visible:text-emerald-950"
+                        ? "border-brand-gold bg-amber-50 font-semibold text-brand-navy shadow-sm"
+                        : "border-brand-blue/15 text-slate-600 hover:border-brand-blue/40 hover:bg-sky-50 hover:text-brand-navy focus-visible:border-brand-blue/40 focus-visible:bg-sky-50 focus-visible:text-brand-navy"
                     }`}
                   >
-                    <Icon className={`size-4 shrink-0 ${active ? "text-emerald-800" : "text-slate-400 group-hover:text-emerald-700 group-focus-visible:text-emerald-700"}`} />
+                    <Icon className={`size-4 shrink-0 ${active ? "text-brand-navy" : "text-slate-400 group-hover:text-brand-blue group-focus-visible:text-brand-blue"}`} />
                     <span className="min-w-0 truncate">{label}</span>
                     <NavigationLinkStatus />
-                    {active ? <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-700" /> : null}
+                    {active ? <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-gold ring-1 ring-brand-navy/20" /> : null}
                   </Link>
                 );
               })}

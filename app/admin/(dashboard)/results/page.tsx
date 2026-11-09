@@ -58,9 +58,6 @@ async function AdminResults() {
           <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[30px]">
             Results &amp; reports
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Monitor live election performance and review final results and declared winners by position.
-          </p>
         </div>
         {liveElections.length > 0 ? (
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-800">
