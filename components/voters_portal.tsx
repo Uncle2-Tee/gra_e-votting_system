@@ -362,10 +362,10 @@ function Overview({ data }: { data: VoterPortalData }) {
     <>
       <section className="relative overflow-hidden rounded-2xl border border-brand-navy/20 bg-gradient-to-br from-brand-navy via-emerald-900 to-brand-blue px-5 py-7 text-white shadow-lg shadow-brand-navy/10 sm:px-9 sm:py-10">
         <div className="pointer-events-none absolute -right-14 -top-32 size-[340px] rounded-full border border-white/[0.08]" />
-        <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-brand-gold/[0.12] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-brand-blue/[0.18] blur-3xl" />
         <div className="relative max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-sky-100 uppercase">
-            <span className="size-1.5 rounded-full bg-brand-gold" />
+            <span className="size-1.5 rounded-full bg-brand-blue" />
             Your voice shapes the future
           </span>
           <h1 className="mt-5 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">

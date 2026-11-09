@@ -147,7 +147,7 @@ export default function AdminDashboardShell({
       </aside>
 
       <div className="lg:pl-[272px]">
-        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-[#ffd500] bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
+        <div className="sticky top-0 z-40 box-border w-full rounded-none border-b-2 border-brand-blue bg-white px-4 py-3 shadow-sm shadow-emerald-950/[0.08] lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <Link href="/admin" className="flex min-w-0 items-center gap-2.5" aria-label="GRA E-Voting administration">
               <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -168,7 +168,7 @@ export default function AdminDashboardShell({
                 aria-controls="admin-mobile-navigation"
                 aria-label={mobileNavigationOpen ? "Close navigation" : "Open navigation"}
                 onClick={() => setMobileNavigationOpen((open) => !open)}
-                className="flex size-11 items-center justify-center rounded-xl border border-brand-blue/35 bg-white text-brand-navy shadow-sm hover:border-brand-gold hover:bg-amber-50"
+                className="flex size-11 items-center justify-center rounded-xl border border-brand-blue/35 bg-white text-brand-navy shadow-sm hover:border-brand-blue hover:bg-sky-50"
               >
                 {mobileNavigationOpen ? <X className="size-5" /> : <Menu className="size-5" />}
               </button>
@@ -187,7 +187,7 @@ export default function AdminDashboardShell({
                     onClick={() => setMobileNavigationOpen(false)}
                     className={`group flex min-h-11 min-w-0 items-center gap-3 rounded-lg border px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-blue ${
                       active
-                        ? "border-brand-gold bg-amber-50 font-semibold text-brand-navy shadow-sm"
+                        ? "border-brand-blue bg-sky-50 font-semibold text-brand-navy shadow-sm"
                         : "border-brand-blue/15 text-slate-600 hover:border-brand-blue/40 hover:bg-sky-50 hover:text-brand-navy focus-visible:border-brand-blue/40 focus-visible:bg-sky-50 focus-visible:text-brand-navy"
                     }`}
                   >
@@ -195,7 +195,7 @@ export default function AdminDashboardShell({
                     <span className="min-w-0 truncate">{label}</span>
                     <NavigationLinkStatus />
                     {id === "nominations" ? pendingNominationBadge : active ? (
-                      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-gold ring-1 ring-brand-navy/20" />
+                      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-blue ring-1 ring-brand-navy/20" />
                     ) : null}
                   </Link>
                 );
