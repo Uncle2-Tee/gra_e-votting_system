@@ -25,6 +25,14 @@ export type ApprovedNominee = {
 
 export type VoterPortalData = {
   databaseStatus: "connected" | "unavailable";
+  elections: {
+    id: string;
+    title: string;
+    status: "SCHEDULED" | "PUBLISHED" | "OPEN";
+    startsAt: string;
+    endsAt: string;
+    timezone: string;
+  }[];
   positions: NominationPositionOption[];
   nominees: ApprovedNominee[];
 };

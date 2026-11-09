@@ -203,7 +203,7 @@ export default function AdminDashboardShell({
             </nav>
           ) : null}
         </div>
-        {children}
+        <div data-dashboard-cards>{children}</div>
       </div>
     </div>
   );

@@ -141,6 +141,7 @@ model ElectionVoter {
   voterId                        String            @db.Uuid
   status                         EligibilityStatus @default(ELIGIBLE)
   voterCredentialDigest          String?           @unique
+  voterCredentialCiphertext      String?
   voterCredentialIssuedAt        DateTime?
   voterCredentialWindowStartedAt DateTime?
   voterCredentialRequestCount    Int               @default(0)

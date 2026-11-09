@@ -207,6 +207,7 @@ export async function importEligibleVoters(
           where: { voterId: { in: existingIdsToUpdate } },
           data: {
             voterCredentialDigest: null,
+            voterCredentialCiphertext: null,
             voterCredentialIssuedAt: null,
             voterCredentialWindowStartedAt: null,
             voterCredentialRequestCount: 0,

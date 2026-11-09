@@ -351,6 +351,13 @@ export function ElectionResultsPanel({
 }
 
 function Overview({ data }: { data: VoterPortalData }) {
+  const dateFormatter = (value: string, timezone: string) =>
+    new Intl.DateTimeFormat("en", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: timezone,
+    }).format(new Date(value));
+
   return (
     <>
       <section className="relative overflow-hidden rounded-2xl bg-[#123b32] px-5 py-7 text-white sm:px-9 sm:py-10">
@@ -386,6 +393,43 @@ function Overview({ data }: { data: VoterPortalData }) {
           </div>
         </div>
       </section>
+
+      {data.elections.length > 0 ? (
+        <section aria-label="Current and upcoming elections" className="mt-5">
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-slate-950">Current and upcoming elections</h2>
+          </div>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {data.elections.map((election) => {
+              const isOpen = election.status === "OPEN";
+              return (
+                <li key={election.id} className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 sm:flex-row sm:items-center sm:p-5">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-semibold text-slate-900">{election.title}</h3>
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${isOpen ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
+                        {isOpen ? "Voting open" : "Upcoming"}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-500">
+                      {isOpen ? "Closes" : "Opens"} {dateFormatter(isOpen ? election.endsAt : election.startsAt, election.timezone)} ({election.timezone})
+                    </p>
+                  </div>
+                  {isOpen ? (
+                    <Link
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-800 px-3.5 text-xs font-semibold text-white transition hover:bg-emerald-900"
+                      href={`/vote?electionId=${encodeURIComponent(election.id)}`}
+                    >
+                      Get voter ID
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <section aria-label="Election portal summary" className="mt-5 grid gap-3 sm:grid-cols-2">
         <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">

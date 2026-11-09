@@ -138,6 +138,10 @@
   }
 }
 
+[data-dashboard-cards] :is(article, section, div)[class*="rounded-"][class~="border"] {
+  border-color: rgb(5 150 105 / 48%);
+}
+
 @media (max-width: 1023px) {
   html {
     overflow-x: clip;

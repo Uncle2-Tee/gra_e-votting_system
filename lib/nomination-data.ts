@@ -58,7 +58,23 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
   for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
     try {
       await synchronizeElectionStatuses();
-      const [positions, candidates] = await Promise.all([
+      const [elections, positions, candidates] = await Promise.all([
+        prisma.election.findMany({
+          where: {
+            status: { in: ["SCHEDULED", "PUBLISHED", "OPEN"] },
+            startsAt: { not: null },
+            endsAt: { gte: new Date() },
+          },
+          orderBy: [{ startsAt: "asc" }, { title: "asc" }],
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            startsAt: true,
+            endsAt: true,
+            timezone: true,
+          },
+        }),
         prisma.position.findMany({
           where: { election: { status: { not: "ARCHIVED" } } },
           orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
@@ -91,6 +107,23 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
 
       return {
         databaseStatus: "connected",
+        elections: elections.flatMap((election) =>
+          election.startsAt && election.endsAt
+            ? [{
+                id: election.id,
+                title: election.title,
+                status:
+                  election.status === "OPEN"
+                    ? "OPEN"
+                    : election.status === "PUBLISHED"
+                      ? "PUBLISHED"
+                      : "SCHEDULED",
+                startsAt: election.startsAt.toISOString(),
+                endsAt: election.endsAt.toISOString(),
+                timezone: election.timezone,
+              }]
+            : [],
+        ),
         positions: positions.map((position) => ({
           id: position.id,
           title: position.title,
@@ -120,6 +153,7 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
       logNominationDataError("voter portal", error, attempt + 1);
       return {
         databaseStatus: "unavailable",
+        elections: [],
         positions: [],
         nominees: [],
       };

@@ -8,7 +8,9 @@ import { redirect } from "next/navigation";
 import {
   createVoterCredentialDigest,
   createVoterNameLookupHash,
-  createVoterPhoneLookupHash,
+  decryptVoterField,
+  encryptVoterField,
+  normalizePhoneNumber,
 } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
 import { getVoterCredentialCookieName } from "@/lib/voter-ballot-session";
@@ -26,6 +28,29 @@ function readText(formData: FormData, key: string) {
 
 function validId(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function ghanaMobileSubscriberNumber(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (/^\d{9}$/.test(digits)) {
+    return digits;
+  }
+  if (/^0\d{9}$/.test(digits)) {
+    return digits.slice(1);
+  }
+  if (/^233\d{9}$/.test(digits)) {
+    return digits.slice(3);
+  }
+  return null;
+}
+
+function voterPhoneMatches(submittedPhone: string, rosterPhone: string) {
+  const submittedGhanaNumber = ghanaMobileSubscriberNumber(submittedPhone);
+  const rosterGhanaNumber = ghanaMobileSubscriberNumber(rosterPhone);
+  if (submittedGhanaNumber && rosterGhanaNumber) {
+    return submittedGhanaNumber === rosterGhanaNumber;
+  }
+  return normalizePhoneNumber(submittedPhone) === normalizePhoneNumber(rosterPhone);
 }
 
 export async function requestVoterId(
@@ -48,10 +73,14 @@ export async function requestVoterId(
     return { ...INITIAL_STATE, error: "Enter a valid phone number." };
   }
   const now = new Date();
-  const voterId = `GRA-${randomBytes(24).toString("base64url")}`;
-  const voterCredentialDigest = createVoterCredentialDigest(voterId);
+  const generatedVoterId = `GRA-${randomBytes(24).toString("base64url")}`;
+  const generatedCredentialDigest = createVoterCredentialDigest(generatedVoterId);
+  const generatedCredentialCiphertext = encryptVoterField(
+    generatedVoterId,
+    "voter-credential",
+  );
   let issueResult:
-    | { status: "issued"; endsAt: Date }
+    | { status: "issued"; endsAt: Date; voterId: string }
     | { status: "unavailable" }
     | { status: "cooldown" }
     | { status: "rate_limited" };
@@ -64,6 +93,8 @@ export async function requestVoterId(
         startsAt: Date | null;
         endsAt: Date | null;
         electionStatus: string;
+        voterCredentialDigest: string | null;
+        voterCredentialCiphertext: string | null;
         voterCredentialIssuedAt: Date | null;
         voterCredentialWindowStartedAt: Date | null;
         voterCredentialRequestCount: number;
@@ -74,6 +105,8 @@ export async function requestVoterId(
           e."startsAt",
           e."endsAt",
           e."status" AS "electionStatus",
+          ev."voterCredentialDigest",
+          ev."voterCredentialCiphertext",
           ev."voterCredentialIssuedAt",
           ev."voterCredentialWindowStartedAt",
           ev."voterCredentialRequestCount"
@@ -84,7 +117,6 @@ export async function requestVoterId(
           AND ev."status" = 'ELIGIBLE'::"EligibilityStatus"
           AND v."status" = 'ACTIVE'::"AccountStatus"
           AND v."identificationLookupHash" = ${createVoterNameLookupHash(name)}
-          AND v."phoneLookupHash" = ${createVoterPhoneLookupHash(phone)}
         FOR UPDATE OF ev
       `;
       const matched = matchedRows[0];
@@ -99,36 +131,63 @@ export async function requestVoterId(
       ) {
         return { status: "unavailable" as const };
       }
+      const rosterPhone = decryptVoterField(matched.phoneCiphertext, "voter-phone");
+      if (!voterPhoneMatches(phone, rosterPhone)) {
+        return { status: "unavailable" as const };
+      }
+
+      if (matched.voterCredentialDigest && matched.voterCredentialCiphertext) {
+        const existingVoterId = decryptVoterField(
+          matched.voterCredentialCiphertext,
+          "voter-credential",
+        );
+        if (
+          !/^GRA-[A-Za-z0-9_-]{32}$/.test(existingVoterId) ||
+          createVoterCredentialDigest(existingVoterId) !== matched.voterCredentialDigest
+        ) {
+          throw new Error("Stored voter credential data is inconsistent.");
+        }
+        return {
+          status: "issued" as const,
+          endsAt: matched.endsAt,
+          voterId: existingVoterId,
+        };
+      }
 
       const windowStartedAt = matched.voterCredentialWindowStartedAt;
       const windowExpired =
         !windowStartedAt ||
         now.getTime() - windowStartedAt.getTime() >= ID_REQUEST_WINDOW_MS;
       const requestCount = windowExpired ? 0 : matched.voterCredentialRequestCount;
-      if (
-        !windowExpired &&
-        matched.voterCredentialIssuedAt &&
-        now.getTime() - matched.voterCredentialIssuedAt.getTime() < ID_REQUEST_COOLDOWN_MS
-      ) {
-        return { status: "cooldown" as const };
-      }
-      if (requestCount >= MAX_ID_REQUESTS_PER_HOUR) {
-        return { status: "rate_limited" as const };
+      if (!matched.voterCredentialDigest) {
+        if (
+          !windowExpired &&
+          matched.voterCredentialIssuedAt &&
+          now.getTime() - matched.voterCredentialIssuedAt.getTime() < ID_REQUEST_COOLDOWN_MS
+        ) {
+          return { status: "cooldown" as const };
+        }
+        if (requestCount >= MAX_ID_REQUESTS_PER_HOUR) {
+          return { status: "rate_limited" as const };
+        }
       }
 
-      await transaction.electionVoter.update({
-        where: { id: matched.id },
-        data: {
-          voterCredentialDigest,
-          voterCredentialIssuedAt: now,
-          voterCredentialWindowStartedAt: windowExpired ? now : windowStartedAt,
-          voterCredentialRequestCount: requestCount + 1,
-        },
-      });
+      await transaction.$executeRaw`
+        UPDATE "ElectionVoter"
+        SET
+          "voterCredentialDigest" = ${generatedCredentialDigest},
+          "voterCredentialCiphertext" = ${generatedCredentialCiphertext},
+          "voterCredentialIssuedAt" = ${now},
+          "voterCredentialWindowStartedAt" = ${windowExpired ? now : windowStartedAt},
+          "voterCredentialRequestCount" = ${requestCount + 1},
+          "updatedAt" = ${now}
+        WHERE "id" = ${matched.id}::uuid
+      `;
 
       return {
         status: "issued" as const,
         endsAt: matched.endsAt,
+        voterId: generatedVoterId,
       };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
@@ -162,7 +221,7 @@ export async function requestVoterId(
   if (maxAge <= 0) {
     return { ...INITIAL_STATE, error: "Voting has closed. Your voter ID cannot be activated." };
   }
-  cookieStore.set(getVoterCredentialCookieName(electionId), voterId, {
+  cookieStore.set(getVoterCredentialCookieName(electionId), issueResult.voterId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",

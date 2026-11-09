@@ -17,10 +17,19 @@ export default function VoterEntryPage({
   enabled,
   databaseAvailable,
   elections,
+  upcomingElections,
+  initialElectionId,
 }: {
   enabled: boolean;
   databaseAvailable: boolean;
   elections: VotingElection[];
+  upcomingElections: {
+    id: string;
+    title: string;
+    startsAt: string;
+    timezone: string;
+  }[];
+  initialElectionId: string;
 }) {
   const [state, requestId, pending] = useActionState(requestVoterId, initialState);
 
@@ -34,7 +43,7 @@ export default function VoterEntryPage({
           Start voting
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Verify your voter-roster details to access your election ballot.
+          When your roster details match, the system generates your unique voter ID and opens your ballot.
         </p>
       </header>
 
@@ -107,7 +116,10 @@ export default function VoterEntryPage({
                 <select
                   name="electionId"
                   required
-                  defaultValue={elections[0].id}
+                  defaultValue={
+                    elections.find((election) => election.id === initialElectionId)?.id ??
+                    elections[0].id
+                  }
                   className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
                 >
                   {elections.map((election) => (
@@ -165,6 +177,29 @@ export default function VoterEntryPage({
             </form>
           )}
         </section>
+
+        {enabled && databaseAvailable && upcomingElections.length > 0 ? (
+          <section aria-label="Upcoming elections" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+            <h2 className="text-sm font-semibold text-slate-950">Upcoming elections</h2>
+            <ul className="mt-3 divide-y divide-slate-100">
+              {upcomingElections.map((election) => (
+                <li key={election.id} className="flex flex-col gap-1.5 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-medium text-slate-800">{election.title}</p>
+                  <p className="text-xs text-slate-500">
+                    Opens {new Intl.DateTimeFormat("en", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                      timeZone: election.timezone,
+                    }).format(new Date(election.startsAt))} ({election.timezone})
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-[11px] leading-5 text-slate-500">
+              Voter verification and ballot access will be available when voting opens.
+            </p>
+          </section>
+        ) : null}
 
       </div>
     </main>

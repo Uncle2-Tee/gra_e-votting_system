@@ -55,27 +55,56 @@ function delay(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function VoterEntryContent() {
+async function VoterEntryContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ electionId?: string }>;
+}) {
   await connection();
+  const query = await searchParams;
   const enabled = process.env.BALLOTING_ENABLED === "true";
   const now = new Date();
   let elections: { id: string; title: string }[] = [];
+  let upcomingElections: {
+    id: string;
+    title: string;
+    startsAt: string;
+    timezone: string;
+  }[] = [];
   let databaseAvailable = true;
   if (enabled) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        elections = await prisma.election.findMany({
+        const scheduledElections = await prisma.election.findMany({
           where: {
             status: { in: ["SCHEDULED", "PUBLISHED", "OPEN"] },
-            startsAt: { lte: now },
+            startsAt: { not: null },
             endsAt: { gte: now },
             positions: {
               some: { candidates: { some: { status: "APPROVED" } } },
             },
           },
           orderBy: [{ startsAt: "asc" }, { title: "asc" }],
-          select: { id: true, title: true },
+          select: {
+            id: true,
+            title: true,
+            startsAt: true,
+            timezone: true,
+          },
         });
+        elections = scheduledElections
+          .filter((election) => election.startsAt && election.startsAt <= now)
+          .map(({ id, title }) => ({ id, title }));
+        upcomingElections = scheduledElections.flatMap((election) =>
+          election.startsAt && election.startsAt > now
+            ? [{
+                id: election.id,
+                title: election.title,
+                startsAt: election.startsAt.toISOString(),
+                timezone: election.timezone,
+              }]
+            : [],
+        );
         break;
       } catch (error) {
         if (attempt < 2 && isRetryableDatabaseError(error)) {
@@ -97,11 +126,17 @@ async function VoterEntryContent() {
       enabled={enabled}
       databaseAvailable={databaseAvailable}
       elections={elections}
+      upcomingElections={upcomingElections}
+      initialElectionId={query.electionId ?? ""}
     />
   );
 }
 
-export default function VotePage() {
+export default function VotePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ electionId?: string }>;
+}) {
   return (
     <Suspense
       fallback={
@@ -110,7 +145,7 @@ export default function VotePage() {
         </main>
       }
     >
-      <VoterEntryContent />
+      <VoterEntryContent searchParams={searchParams} />
     </Suspense>
   );
 }
