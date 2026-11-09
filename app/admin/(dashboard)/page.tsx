@@ -9,7 +9,7 @@ async function AdminDashboard() {
 
 export default function AdminPortalAccess() {
   return (
-    <Suspense fallback={<main className="mx-auto max-w-[1600px] px-4 py-6 text-sm text-slate-500 sm:px-8 sm:py-9">Loading administrator overview…</main>}>
+    <Suspense fallback={null}>
       <AdminDashboard />
     </Suspense>
   );

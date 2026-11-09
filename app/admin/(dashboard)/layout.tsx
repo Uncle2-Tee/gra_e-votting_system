@@ -8,6 +8,8 @@ import {
   isAdminDatabaseUnavailableError,
 } from "@/lib/admin-security";
 
+export const instant = false;
+
 async function AuthenticatedDashboard({
   children,
 }: {
@@ -69,7 +71,7 @@ export default function AdminDashboardLayout({
   children: ReactNode;
 }) {
   return (
-    <Suspense fallback={<main className="flex min-h-dvh items-center justify-center px-4 text-center text-sm text-slate-500">Loading administrator access…</main>}>
+    <Suspense fallback={null}>
       <AuthenticatedDashboard>{children}</AuthenticatedDashboard>
     </Suspense>
   );

@@ -116,6 +116,7 @@ export default function AdminDashboardShell({
                     <Link
                       key={id}
                       href={href}
+                      prefetch={true}
                       aria-current={active ? "page" : undefined}
                       className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors ${
                         active
@@ -183,6 +184,7 @@ export default function AdminDashboardShell({
                   <Link
                     key={id}
                     href={href}
+                    prefetch={true}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setMobileNavigationOpen(false)}
                     className={`group flex min-h-11 min-w-0 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 ${

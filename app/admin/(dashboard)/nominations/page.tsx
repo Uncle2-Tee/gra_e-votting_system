@@ -9,7 +9,7 @@ async function NominationData() {
 
 export default function AdminNominationsRoute() {
   return (
-    <Suspense fallback={<main className="mx-auto max-w-[1600px] px-4 py-6 text-sm text-slate-500 sm:px-8 sm:py-9">Loading nomination applications…</main>}>
+    <Suspense fallback={null}>
       <NominationData />
     </Suspense>
   );

@@ -1,6 +1,6 @@
 "use server";
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -20,6 +20,13 @@ const INITIAL_STATE: VoterActionState = { error: null, message: null };
 const MAX_ID_REQUESTS_PER_HOUR = 5;
 const ID_REQUEST_COOLDOWN_MS = 60_000;
 const ID_REQUEST_WINDOW_MS = 60 * 60 * 1000;
+const LEGACY_VOTER_ID_PATTERN = /^GRA-[A-Za-z0-9_-]{32}$/;
+
+function generateVoterId() {
+  return Array.from({ length: 6 }, () =>
+    String.fromCharCode(65 + randomInt(26)),
+  ).join("");
+}
 
 function readText(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -73,14 +80,8 @@ export async function requestVoterId(
     return { ...INITIAL_STATE, error: "Enter a valid phone number." };
   }
   const now = new Date();
-  const generatedVoterId = `GRA-${randomBytes(24).toString("base64url")}`;
-  const generatedCredentialDigest = createVoterCredentialDigest(generatedVoterId);
-  const generatedCredentialCiphertext = encryptVoterField(
-    generatedVoterId,
-    "voter-credential",
-  );
   let issueResult:
-    | { status: "issued"; endsAt: Date; voterId: string }
+    | { status: "issued"; voterId: string }
     | { status: "unavailable" }
     | { status: "cooldown" }
     | { status: "rate_limited" };
@@ -142,16 +143,18 @@ export async function requestVoterId(
           "voter-credential",
         );
         if (
-          !/^GRA-[A-Za-z0-9_-]{32}$/.test(existingVoterId) ||
+          (!/^[A-Z]{6}$/.test(existingVoterId) &&
+            !LEGACY_VOTER_ID_PATTERN.test(existingVoterId)) ||
           createVoterCredentialDigest(existingVoterId) !== matched.voterCredentialDigest
         ) {
           throw new Error("Stored voter credential data is inconsistent.");
         }
-        return {
-          status: "issued" as const,
-          endsAt: matched.endsAt,
-          voterId: existingVoterId,
-        };
+        if (/^[A-Z]{6}$/.test(existingVoterId)) {
+          return {
+            status: "issued" as const,
+            voterId: existingVoterId,
+          };
+        }
       }
 
       const windowStartedAt = matched.voterCredentialWindowStartedAt;
@@ -172,11 +175,34 @@ export async function requestVoterId(
         }
       }
 
+      let generatedCredential:
+        | { voterId: string; digest: string; ciphertext: string }
+        | undefined;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const voterId = generateVoterId();
+        const digest = createVoterCredentialDigest(voterId);
+        const existingCredential = await transaction.electionVoter.findUnique({
+          where: { voterCredentialDigest: digest },
+          select: { id: true },
+        });
+        if (!existingCredential || existingCredential.id === matched.id) {
+          generatedCredential = {
+            voterId,
+            digest,
+            ciphertext: encryptVoterField(voterId, "voter-credential"),
+          };
+          break;
+        }
+      }
+      if (!generatedCredential) {
+        throw new Error("Could not generate an available voter ID.");
+      }
+
       await transaction.$executeRaw`
         UPDATE "ElectionVoter"
         SET
-          "voterCredentialDigest" = ${generatedCredentialDigest},
-          "voterCredentialCiphertext" = ${generatedCredentialCiphertext},
+          "voterCredentialDigest" = ${generatedCredential.digest},
+          "voterCredentialCiphertext" = ${generatedCredential.ciphertext},
           "voterCredentialIssuedAt" = ${now},
           "voterCredentialWindowStartedAt" = ${windowExpired ? now : windowStartedAt},
           "voterCredentialRequestCount" = ${requestCount + 1},
@@ -186,8 +212,7 @@ export async function requestVoterId(
 
       return {
         status: "issued" as const,
-        endsAt: matched.endsAt,
-        voterId: generatedVoterId,
+        voterId: generatedCredential.voterId,
       };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
@@ -214,20 +239,80 @@ export async function requestVoterId(
   }
 
   const cookieStore = await cookies();
-  const maxAge = Math.min(
-    60 * 60,
-    Math.floor((issueResult.endsAt.getTime() - Date.now()) / 1000),
-  );
-  if (maxAge <= 0) {
-    return { ...INITIAL_STATE, error: "Voting has closed. Your voter ID cannot be activated." };
-  }
-  cookieStore.set(getVoterCredentialCookieName(electionId), issueResult.voterId, {
+  cookieStore.set(getVoterCredentialCookieName(electionId), "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/vote/ballot",
-    maxAge,
+    maxAge: 0,
   });
+  return {
+    ...INITIAL_STATE,
+    voterId: issueResult.voterId,
+    electionId,
+  };
+}
+
+export async function loginVoterWithId(
+  _previousState: VoterActionState,
+  formData: FormData,
+): Promise<VoterActionState> {
+  if (process.env.BALLOTING_ENABLED !== "true") {
+    return { ...INITIAL_STATE, error: "Ballot access is not enabled yet." };
+  }
+
+  const electionId = readText(formData, "electionId");
+  const voterId = readText(formData, "voterId").toUpperCase();
+  if (
+    !validId(electionId) ||
+    (!/^[A-Z]{6}$/.test(voterId) && !LEGACY_VOTER_ID_PATTERN.test(voterId))
+  ) {
+    return { ...INITIAL_STATE, error: "Enter the voter ID generated for this election." };
+  }
+
+  try {
+    const now = new Date();
+    const electionVoter = await prisma.electionVoter.findFirst({
+      where: {
+        electionId,
+        status: "ELIGIBLE",
+        voterCredentialDigest: createVoterCredentialDigest(voterId),
+        voter: { status: "ACTIVE" },
+        election: {
+          status: { in: ["SCHEDULED", "PUBLISHED", "OPEN"] },
+          startsAt: { lte: now },
+          endsAt: { gt: now },
+        },
+      },
+      select: { election: { select: { endsAt: true } } },
+    });
+    const endsAt = electionVoter?.election.endsAt;
+    if (!endsAt || endsAt <= now) {
+      return { ...INITIAL_STATE, error: "That voter ID is not available for this election." };
+    }
+
+    const maxAge = Math.min(60 * 60, Math.floor((endsAt.getTime() - now.getTime()) / 1000));
+    if (maxAge <= 0) {
+      return { ...INITIAL_STATE, error: "Voting has closed. Your voter ID cannot be activated." };
+    }
+    const cookieStore = await cookies();
+    cookieStore.set(getVoterCredentialCookieName(electionId), voterId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/vote/ballot",
+      maxAge,
+    });
+  } catch (error) {
+    const errorCode =
+      error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "UNKNOWN";
+    console.error("Voter ID sign-in could not be completed.", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorCode,
+    });
+    return { ...INITIAL_STATE, error: "Sign-in could not be completed. Please try again." };
+  }
+
   redirect(`/vote/ballot?electionId=${encodeURIComponent(electionId)}&verified=1`);
 }
 
@@ -242,7 +327,7 @@ export async function submitPositionVote(
   const electionId = readText(formData, "electionId");
   const positionId = readText(formData, "positionId");
   const candidateId = readText(formData, "candidateId");
-  const providedVoterId = readText(formData, "voterId");
+  const providedVoterId = readText(formData, "voterId").toUpperCase();
   if (
     !validId(electionId) ||
     !validId(positionId) ||
@@ -254,7 +339,7 @@ export async function submitPositionVote(
   const cookieStore = await cookies();
   const voterId =
     cookieStore.get(getVoterCredentialCookieName(electionId))?.value ?? providedVoterId;
-  if (!/^GRA-[A-Za-z0-9_-]{32}$/.test(voterId)) {
+  if (!/^[A-Z]{6}$/.test(voterId) && !LEGACY_VOTER_ID_PATTERN.test(voterId)) {
     return { ...INITIAL_STATE, error: "Enter your voter ID to continue voting." };
   }
 

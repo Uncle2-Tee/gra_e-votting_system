@@ -17,9 +17,9 @@ import NavigationLinkStatus from "@/components/navigation-link-status";
 
 const navigation = [
   { section: "overview", label: "Overview", href: "/vote/overview", icon: LayoutDashboard },
-  { section: "ballot", label: "Vote", href: "/vote", icon: Vote },
   { section: "nominate", label: "Nomination form", href: "/vote/nominate", icon: FilePlus2 },
   { section: "nominees", label: "Approved nominees", href: "/vote/nominees", icon: BadgeCheck },
+  { section: "ballot", label: "Vote", href: "/vote", icon: Vote },
   { section: "results", label: "Results", href: "/vote/results", icon: ChartNoAxesCombined },
 ] as const;
 
@@ -64,6 +64,7 @@ export default function VoterDashboardShell({
                 <Link
                   key={section}
                   href={href}
+                  prefetch={true}
                   aria-current={active ? "page" : undefined}
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition ${
                     active
@@ -117,6 +118,7 @@ export default function VoterDashboardShell({
                   <Link
                     key={section}
                     href={href}
+                    prefetch={true}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setMobileNavigationOpen(false)}
                     className={`group flex min-h-11 min-w-0 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 ${

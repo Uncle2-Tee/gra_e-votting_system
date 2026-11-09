@@ -68,7 +68,7 @@ async function AdminLoginContent() {
 
 export default function AdminLoginPage() {
   return (
-    <Suspense fallback={<main className="flex min-h-dvh items-center justify-center px-4 text-center text-sm text-slate-500">Loading administrator sign-in…</main>}>
+    <Suspense fallback={null}>
       <AdminLoginContent />
     </Suspense>
   );

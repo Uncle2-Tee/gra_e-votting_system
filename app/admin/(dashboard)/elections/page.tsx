@@ -11,7 +11,7 @@ async function ElectionData() {
 
 export default function AdminElectionsRoute() {
   return (
-    <Suspense fallback={<main className="mx-auto max-w-[1600px] px-4 py-6 text-sm text-slate-500 sm:px-8 sm:py-9">Loading elections…</main>}>
+    <Suspense fallback={null}>
       <ElectionData />
     </Suspense>
   );

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import VoterBallotPage from "@/components/voter-ballot-page";
 import {
   createVoterCredentialDigest,
@@ -37,7 +38,12 @@ async function BallotPageContent({
           candidates: {
             where: { status: "APPROVED" },
             orderBy: { createdAt: "asc" },
-            select: { id: true, nameCiphertext: true },
+            select: {
+              id: true,
+              nameCiphertext: true,
+              photoData: true,
+              photoMimeType: true,
+            },
           },
         },
       },
@@ -48,7 +54,7 @@ async function BallotPageContent({
   const voterIdByElection = new Map<string, string>();
   for (const election of allElections) {
     const voterId = cookieStore.get(getVoterCredentialCookieName(election.id))?.value;
-    if (voterId && /^GRA-[A-Za-z0-9_-]{32}$/.test(voterId)) {
+    if (voterId && (/^[A-Z]{6}$/.test(voterId) || /^GRA-[A-Za-z0-9_-]{32}$/.test(voterId))) {
       credentialByDigest.set(createVoterCredentialDigest(voterId), election.id);
       voterIdByElection.set(election.id, voterId);
     }
@@ -94,6 +100,9 @@ async function BallotPageContent({
           credentialByDigest.get(session.voterCredentialDigest) === session.electionId,
       )
     : undefined;
+  if (selectedElection && !selectedSession) {
+      redirect(`/vote?electionId=${encodeURIComponent(selectedElection.id)}`);
+  }
   const submittedPositionIds = selectedSession
     ? (await prisma.voteParticipation.findMany({
         where: {
@@ -131,6 +140,10 @@ async function BallotPageContent({
             candidates: position.candidates.map((candidate) => ({
               id: candidate.id,
               name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
+              photoUrl:
+                candidate.photoData && candidate.photoMimeType === "image/webp"
+                  ? `/admin/candidates/${candidate.id}/photo`
+                  : null,
             })),
           })),
       })).filter((election) => election.positions.length > 0)}
@@ -144,13 +157,7 @@ export default function BallotPage({
   searchParams: Promise<{ electionId?: string; verified?: string }>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto flex min-h-[calc(100dvh-66px)] w-full max-w-5xl items-center justify-center px-4 text-center text-sm text-slate-500 sm:px-8">
-          Loading ballot…
-        </div>
-      }
-    >
+    <Suspense fallback={null}>
       <BallotPageContent searchParams={searchParams} />
     </Suspense>
   );

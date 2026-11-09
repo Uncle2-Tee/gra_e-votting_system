@@ -2,14 +2,16 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, BadgeCheck, Check, Clock3, ShieldCheck } from "lucide-react";
 import { submitPositionVote } from "@/app/vote/ballot-actions";
+import CopyVoterIdButton from "@/components/copy-voter-id-button";
 import type { VoterActionState } from "@/lib/voter-ballot-types";
 
 type BallotPosition = {
   id: string;
   title: string;
-  candidates: { id: string; name: string }[];
+  candidates: { id: string; name: string; photoUrl: string | null }[];
 };
 
 type BallotElection = {
@@ -20,6 +22,8 @@ type BallotElection = {
 };
 
 const initialState: VoterActionState = { error: null, message: null };
+const VOTER_ID_PATTERN = /^[A-Z]{6}$/;
+const LEGACY_VOTER_ID_PATTERN = /^GRA-[A-Za-z0-9_-]{32}$/;
 
 function PositionBallotCard({
   electionId,
@@ -41,7 +45,8 @@ function PositionBallotCard({
     (candidate) => candidate.id === candidateId,
   );
   const alreadySubmitted = alreadyVoted || Boolean(state.message);
-  const voterIdReady = hasVoterSession || /^GRA-[A-Za-z0-9_-]{32}$/.test(voterId);
+  const voterIdReady =
+    hasVoterSession || VOTER_ID_PATTERN.test(voterId) || LEGACY_VOTER_ID_PATTERN.test(voterId);
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -100,6 +105,27 @@ function PositionBallotCard({
                   }}
                   className="size-4 accent-emerald-700"
                 />
+                {candidate.photoUrl ? (
+                  <Image
+                    src={candidate.photoUrl}
+                    alt=""
+                    width={44}
+                    height={44}
+                    unoptimized
+                    className="size-11 shrink-0 rounded-full border border-slate-200 object-cover"
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-semibold text-emerald-800"
+                  >
+                    {candidate.name
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((part) => part.charAt(0).toUpperCase())
+                      .join("")}
+                  </span>
+                )}
                 <span className="min-w-0 flex-1 text-sm font-medium text-slate-800">
                   {candidate.name}
                 </span>
@@ -267,12 +293,15 @@ export default function VoterBallotPage({
         </p>
       ) : null}
 
-      {hasVoterSession && /^GRA-[A-Za-z0-9_-]{32}$/.test(verifiedVoterId) ? (
+      {hasVoterSession && (VOTER_ID_PATTERN.test(verifiedVoterId) || LEGACY_VOTER_ID_PATTERN.test(verifiedVoterId)) ? (
         <section aria-label="Your voter ID" className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-semibold text-slate-800">Your voter ID</p>
-          <p className="mt-2 select-all break-all rounded-lg bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-900">
+          <p className="mt-2 select-all break-all rounded-lg bg-slate-50 px-3 py-2.5 font-mono text-sm tracking-[0.2em] text-slate-900">
             {verifiedVoterId}
           </p>
+          <div className="mt-2">
+            <CopyVoterIdButton voterId={verifiedVoterId} />
+          </div>
           <p className="mt-2 text-[11px] leading-5 text-slate-500">
             Keep this ID private. You can use it to recover ballot access if needed.
           </p>
@@ -285,11 +314,11 @@ export default function VoterBallotPage({
             Enter your voter ID to unlock ballot submission
             <input
               value={voterId}
-              onChange={(event) => setVoterId(event.currentTarget.value)}
+              onChange={(event) => setVoterId(event.currentTarget.value.toUpperCase())}
               autoComplete="off"
-              maxLength={36}
-              placeholder="e.g. GRA-abc123…"
-              className="mt-2 h-11 w-full rounded-lg border border-blue-200 bg-white px-3 font-mono text-sm font-normal text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 sm:max-w-md"
+              maxLength={6}
+              placeholder="e.g. ABCDEF"
+              className="mt-2 h-11 w-full rounded-lg border border-blue-200 bg-white px-3 font-mono text-sm font-normal uppercase tracking-[0.2em] text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 sm:max-w-md"
             />
           </label>
           <p className="mt-2 text-[11px] text-blue-900">

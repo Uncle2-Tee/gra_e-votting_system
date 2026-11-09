@@ -138,13 +138,7 @@ export default function VotePage({
   searchParams: Promise<{ electionId?: string }>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <main className="mx-auto flex min-h-[calc(100dvh-66px)] w-full max-w-6xl items-center justify-center px-4 text-center text-sm text-slate-500 sm:px-8">
-          Preparing voter access…
-        </main>
-      }
-    >
+    <Suspense fallback={null}>
       <VoterEntryContent searchParams={searchParams} />
     </Suspense>
   );

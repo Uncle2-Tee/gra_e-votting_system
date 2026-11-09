@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { ArrowRight, KeyRound, LockKeyhole, Vote } from "lucide-react";
-import { requestVoterId } from "@/app/vote/ballot-actions";
+import { loginVoterWithId, requestVoterId } from "@/app/vote/ballot-actions";
+import CopyVoterIdButton from "@/components/copy-voter-id-button";
 import type { VoterActionState } from "@/lib/voter-ballot-types";
 
 type VotingElection = {
@@ -32,6 +33,7 @@ export default function VoterEntryPage({
   initialElectionId: string;
 }) {
   const [state, requestId, pending] = useActionState(requestVoterId, initialState);
+  const [loginState, login, loginPending] = useActionState(loginVoterWithId, initialState);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-8 sm:py-10">
@@ -43,21 +45,32 @@ export default function VoterEntryPage({
           Start voting
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          When your roster details match, the system generates your unique voter ID and opens your ballot.
+          Verify your voter details, then sign in with your voter ID to access your ballot.
         </p>
       </header>
 
       <div className="grid gap-5">
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-7">
-            <ol aria-label="Voting step" className="grid grid-cols-1 gap-3">
+            <ol aria-label="Voting steps" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <li className="flex items-center gap-2.5">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-800 text-xs font-bold text-white">
                   1
                 </span>
                 <span>
-                  <span className="block text-xs font-semibold text-slate-900">Get your voter ID</span>
-                  <span className="mt-0.5 block text-[10px] text-slate-500">Verify your roster details</span>
+                  <span className="block text-xs font-semibold text-slate-900">Verify your details</span>
+                  <span className="mt-0.5 block text-[10px] text-slate-500">Confirm your roster information</span>
+                </span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  state.voterId ? "bg-emerald-800 text-white" : "bg-slate-200 text-slate-600"
+                }`}>
+                  2
+                </span>
+                <span>
+                  <span className="block text-xs font-semibold text-slate-900">Sign in with voter ID</span>
+                  <span className="mt-0.5 block text-[10px] text-slate-500">Enter your six-letter ID to open the ballot</span>
                 </span>
               </li>
             </ol>
@@ -101,6 +114,56 @@ export default function VoterEntryPage({
                   </Link>
                 </div>
               </div>
+            </div>
+          ) : state.voterId && state.electionId ? (
+            <div className="space-y-5 p-5 sm:p-7">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5">
+                <p className="text-xs font-semibold text-emerald-950">Your voter ID</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-900">
+                  Your details match the voter register. Keep this ID private, then enter it below to sign in to your ballot.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <p className="select-all rounded-lg bg-white px-3 py-2 font-mono text-lg font-bold tracking-[0.2em] text-slate-950">
+                    {state.voterId}
+                  </p>
+                  <CopyVoterIdButton voterId={state.voterId} />
+                </div>
+              </div>
+
+              <form action={login} className="space-y-4">
+                <input type="hidden" name="electionId" value={state.electionId} />
+                <div>
+                  <h2 className="text-base font-semibold text-slate-950">Sign in with your voter ID</h2>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Enter the six-letter ID shown above to access the ballot.
+                  </p>
+                </div>
+                <label className="block text-xs font-medium text-slate-700">
+                  Voter ID
+                  <input
+                    name="voterId"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    maxLength={36}
+                    placeholder="ABCDEF"
+                    className="mt-1.5 h-12 w-full rounded-lg border border-slate-200 bg-white px-3 font-mono text-lg font-semibold uppercase tracking-[0.2em] text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 sm:max-w-sm"
+                  />
+                </label>
+                {loginState.error ? (
+                  <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-800">
+                    {loginState.error}
+                  </p>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={loginPending}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-900 disabled:cursor-wait disabled:opacity-60"
+                >
+                  <KeyRound className="size-4" />
+                  {loginPending ? "Signing in…" : "Sign in and open ballot"}
+                </button>
+              </form>
             </div>
           ) : (
             <form action={requestId} className="space-y-5 p-5 sm:p-7">
@@ -172,7 +235,7 @@ export default function VoterEntryPage({
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-wait disabled:opacity-60"
               >
                 <KeyRound className="size-4" />
-                {pending ? "Verifying your details…" : "Verify details and continue to ballot"}
+                {pending ? "Verifying your details…" : "Verify details and generate voter ID"}
               </button>
             </form>
           )}
