@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import VotersPortal from "@/components/voters_portal";
+import PageLoading from "@/components/page-loading";
 import { getVoterPortalData, getVoterResultsData } from "@/lib/nomination-data";
 import type { VoterResultsData } from "@/lib/nomination-types";
 
@@ -19,7 +20,7 @@ export default function VoterPortalPage({
   section: PortalSection;
 }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <VoterPortalContent section={section} />
     </Suspense>
   );

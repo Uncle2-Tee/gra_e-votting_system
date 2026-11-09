@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import VoterBallotPage from "@/components/voter-ballot-page";
+import PageLoading from "@/components/page-loading";
 import {
   createVoterCredentialDigest,
   decryptVoterField,
@@ -156,7 +157,7 @@ export default function BallotPage({
   searchParams: Promise<{ electionId?: string; verified?: string }>;
 }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <BallotPageContent searchParams={searchParams} />
     </Suspense>
   );

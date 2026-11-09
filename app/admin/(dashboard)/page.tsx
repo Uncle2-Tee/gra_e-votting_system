@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import AdminPortal from "@/components/admin_portal";
+import PageLoading from "@/components/page-loading";
 import { getAdminOverview } from "@/lib/admin-overview";
 
 async function AdminDashboard() {
@@ -9,7 +10,7 @@ async function AdminDashboard() {
 
 export default function AdminPortalAccess() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <AdminDashboard />
     </Suspense>
   );

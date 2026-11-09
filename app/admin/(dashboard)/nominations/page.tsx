@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AdminNominationsPage } from "@/components/admin-dashboard-pages";
+import PageLoading from "@/components/page-loading";
 import { getPendingNominationData } from "@/lib/nomination-data";
 
 async function NominationData() {
@@ -9,7 +10,7 @@ async function NominationData() {
 
 export default function AdminNominationsRoute() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <NominationData />
     </Suspense>
   );

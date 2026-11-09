@@ -7,6 +7,7 @@ import {
   Vote,
 } from "lucide-react";
 import { ElectionResultsPanel } from "@/components/voters_portal";
+import PageLoading from "@/components/page-loading";
 import { getVoterResultsData } from "@/lib/nomination-data";
 
 async function AdminResults() {
@@ -100,7 +101,7 @@ async function AdminResults() {
 
 export default function AdminResultsPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <AdminResults />
     </Suspense>
   );

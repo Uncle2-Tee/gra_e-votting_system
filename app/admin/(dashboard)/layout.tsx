@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import AdminPendingNominationBadge from "@/components/admin-pending-nomination-badge";
 import AdminDashboardShell from "@/components/admin-dashboard-shell";
+import PageLoading from "@/components/page-loading";
 import {
   getCurrentAdmin,
   isAdminDatabaseUnavailableError,
@@ -71,7 +72,7 @@ export default function AdminDashboardLayout({
   children: ReactNode;
 }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading centered />}>
       <AuthenticatedDashboard>{children}</AuthenticatedDashboard>
     </Suspense>
   );

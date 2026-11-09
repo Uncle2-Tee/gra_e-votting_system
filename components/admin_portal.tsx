@@ -1,7 +1,6 @@
 import {
   ArrowUpRight,
   Building2,
-  CalendarDays,
   ChartNoAxesCombined,
   FileCheck2,
   Fingerprint,
@@ -47,19 +46,12 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
         </div>
         <div className="relative z-10 mt-6 flex flex-wrap gap-2 border-t border-white/15 pt-5">
           <Link
-            href="/admin/elections"
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-3.5 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-50"
-          >
-            <CalendarDays className="size-4" />
-            Voting setup
-            <ArrowUpRight className="size-3.5" />
-          </Link>
-          <Link
             href="/admin/nominations"
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3.5 text-xs font-semibold text-white transition hover:bg-white/15"
           >
             <FileCheck2 className="size-4" />
-            Nomination review
+            <span className="sm:hidden">Review</span>
+            <span className="hidden sm:inline">Nomination review</span>
             <ArrowUpRight className="size-3.5" />
           </Link>
           <Link
@@ -67,7 +59,8 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3.5 text-xs font-semibold text-white transition hover:bg-white/15"
           >
             <Settings2 className="size-4" />
-            Eligibility &amp; imports
+            <span className="sm:hidden">Imports</span>
+            <span className="hidden sm:inline">Eligibility &amp; imports</span>
             <ArrowUpRight className="size-3.5" />
           </Link>
         </div>

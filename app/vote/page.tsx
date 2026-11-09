@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { Prisma } from "@prisma/client";
 import VoterEntryPage from "@/components/voter-entry-page";
+import PageLoading from "@/components/page-loading";
 import { prisma } from "@/lib/prisma";
 
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
@@ -138,7 +139,7 @@ export default function VotePage({
   searchParams: Promise<{ electionId?: string }>;
 }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <VoterEntryContent searchParams={searchParams} />
     </Suspense>
   );

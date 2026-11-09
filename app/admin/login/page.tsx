@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { LockKeyhole } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
 import AdminLoginForm from "@/components/admin-login-form";
+import PageLoading from "@/components/page-loading";
 import {
   getCurrentAdmin,
   isAdminDatabaseUnavailableError,
@@ -68,7 +69,7 @@ async function AdminLoginContent() {
 
 export default function AdminLoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading centered />}>
       <AdminLoginContent />
     </Suspense>
   );
