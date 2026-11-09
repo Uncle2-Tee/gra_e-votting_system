@@ -95,11 +95,6 @@ export default function AdminEligibilityImport() {
         </div>
         <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
           <li><strong className="text-slate-800">Required columns:</strong> Name and Phone Number.</li>
-          <li>Each voter must have a unique phone number. The submitted number is matched against this roster before an election ID is sent.</li>
-          <li>One worksheet only; the first row contains column headers.</li>
-          <li>Repeated names and phone numbers in one file are reported. Identical normalized names are treated as the same person.</li>
-          <li>Voters are eligible for current open or upcoming elections and all elections created in the future. Closed elections are unchanged.</li>
-          <li>Personal values are encrypted before storage. Import history stores counts and row numbers, not spreadsheet values.</li>
         </ul>
         <a
           className="mt-5 inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"

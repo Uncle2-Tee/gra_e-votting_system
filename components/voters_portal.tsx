@@ -376,19 +376,21 @@ function Overview({ data }: { data: VoterPortalData }) {
             Review approved candidates or submit a nomination for an available
             position. Administrators review every application before publication.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start sm:gap-3">
             <Link
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-xs font-semibold text-brand-navy transition hover:bg-sky-50"
+              className="inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-center text-[11px] font-semibold text-brand-navy transition hover:bg-sky-50 sm:gap-2 sm:px-4 sm:text-xs"
               href="/vote/nominate"
             >
-              Start a nomination
+              <span className="sm:hidden">Start nomination</span>
+              <span className="hidden sm:inline">Start a nomination</span>
               <ArrowRight className="size-3.5" />
             </Link>
             <Link
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/25 bg-white/[0.06] px-4 text-xs font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.12]"
+              className="inline-flex h-10 min-w-0 items-center justify-center rounded-lg border border-white/25 bg-white/[0.06] px-3 text-center text-[11px] font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.12] sm:px-4 sm:text-xs"
               href="/vote/nominees"
             >
-              Browse approved nominees
+              <span className="sm:hidden">Browse nominees</span>
+              <span className="hidden sm:inline">Browse approved nominees</span>
             </Link>
           </div>
         </div>
