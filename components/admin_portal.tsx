@@ -23,9 +23,10 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
   return (
     <main id="overview" className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
       <section className="relative overflow-hidden rounded-2xl border border-emerald-800/20 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-900 px-5 py-6 text-white shadow-sm sm:px-8 sm:py-8">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-10 bg-gradient-to-b from-transparent to-[#f6f9fc]/70" />
         <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-24 size-72 rounded-full border border-white/10" />
         <div aria-hidden="true" className="pointer-events-none absolute -right-2 -top-12 size-48 rounded-full border border-white/10" />
-        <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+        <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
             <div className="flex items-center gap-2 text-xs font-medium text-emerald-100">
               <Building2 className="size-3.5" />
@@ -44,7 +45,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
             {overview.databaseStatus === "connected" ? "System data connected" : "System data unavailable"}
           </div>
         </div>
-        <div className="relative mt-6 flex flex-wrap gap-2 border-t border-white/15 pt-5">
+        <div className="relative z-10 mt-6 flex flex-wrap gap-2 border-t border-white/15 pt-5">
           <Link
             href="/admin/elections"
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-3.5 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-50"
@@ -91,7 +92,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
                   : "—"}
               <span className="mt-2 block break-words text-[10px] leading-4 font-normal tracking-normal text-slate-400 sm:text-[11px]">
                 {value === "turnoutPercentage"
-                  ? `${overview.stats?.participants ?? 0} participants across eligible election assignments`
+                  ? `${overview.stats?.participants ?? 0} voters participated across eligible election assignments`
                   : overview.databaseStatus === "connected"
                     ? "Current database total"
                     : "Unavailable while disconnected"}

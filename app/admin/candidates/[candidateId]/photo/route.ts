@@ -41,7 +41,7 @@ export async function GET(
 
     return new NextResponse(new Uint8Array(candidate.photoData), {
       headers: {
-        "Cache-Control": "private, no-store",
+        "Cache-Control": approvedForVoterDisplay ? "public, max-age=300" : "private, no-store",
         "Content-Length": String(candidate.photoData.byteLength),
         "Content-Type": "image/webp",
         "X-Content-Type-Options": "nosniff",

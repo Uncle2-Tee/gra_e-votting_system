@@ -64,7 +64,6 @@ export default function VoterDashboardShell({
                 <Link
                   key={section}
                   href={href}
-                  prefetch={true}
                   aria-current={active ? "page" : undefined}
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition ${
                     active
@@ -118,7 +117,6 @@ export default function VoterDashboardShell({
                   <Link
                     key={section}
                     href={href}
-                    prefetch={true}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setMobileNavigationOpen(false)}
                     className={`group flex min-h-11 min-w-0 items-center gap-3 rounded-lg border px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-blue ${

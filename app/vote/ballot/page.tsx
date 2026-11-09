@@ -41,7 +41,6 @@ async function BallotPageContent({
             select: {
               id: true,
               nameCiphertext: true,
-              photoData: true,
               photoMimeType: true,
             },
           },
@@ -141,7 +140,7 @@ async function BallotPageContent({
               id: candidate.id,
               name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
               photoUrl:
-                candidate.photoData && candidate.photoMimeType === "image/webp"
+                candidate.photoMimeType === "image/webp"
                   ? `/admin/candidates/${candidate.id}/photo`
                   : null,
             })),

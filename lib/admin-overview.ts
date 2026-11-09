@@ -1,7 +1,7 @@
 import "server-only";
 
 import { connection } from "next/server";
-import { synchronizeElectionStatuses } from "@/lib/election-schedule";
+import { getEffectiveElectionStatus } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 
 export type AdminOverview = {
@@ -58,7 +58,6 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
   await connection();
 
   try {
-    await synchronizeElectionStatuses();
     const elections = await prisma.election.findMany({
       where: { status: { not: "ARCHIVED" } },
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
@@ -80,6 +79,7 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
       databaseStatus: "connected",
       elections: elections.map((election) => ({
         ...election,
+        status: getEffectiveElectionStatus(election),
         startsAt: election.startsAt?.toISOString() ?? null,
         endsAt: election.endsAt?.toISOString() ?? null,
         positions: election.positions,
@@ -103,7 +103,6 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   await connection();
 
   try {
-    await synchronizeElectionStatuses();
     const [
       totalElections,
       registeredVoters,
@@ -114,9 +113,18 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     ] = await Promise.all([
       prisma.election.count(),
       prisma.voter.count(),
-      prisma.electionVoter.count({ where: { status: "ELIGIBLE" } }),
-      prisma.voteParticipation.count({
-        where: { electionVoter: { status: "ELIGIBLE" } },
+      prisma.electionVoter.count({
+        where: {
+          status: "ELIGIBLE",
+          voter: { status: "ACTIVE" },
+        },
+      }),
+      prisma.electionVoter.count({
+        where: {
+          status: "ELIGIBLE",
+          voter: { status: "ACTIVE" },
+          participations: { some: {} },
+        },
       }),
       prisma.election.findMany({
         where: { status: { not: "ARCHIVED" } },
@@ -154,10 +162,11 @@ export async function getAdminOverview(): Promise<AdminOverview> {
         turnoutPercentage:
           eligibleVoters === 0
             ? 0
-            : Math.round((participants / eligibleVoters) * 1000) / 10,
+            : Math.min(100, Math.round((participants / eligibleVoters) * 1000) / 10),
       },
       elections: elections.map((election) => ({
         ...election,
+        status: getEffectiveElectionStatus(election),
         startsAt: election.startsAt?.toISOString() ?? null,
         endsAt: election.endsAt?.toISOString() ?? null,
       })),

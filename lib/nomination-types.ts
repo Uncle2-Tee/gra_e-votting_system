@@ -33,6 +33,7 @@ export type VoterPortalData = {
     endsAt: string;
     timezone: string;
   }[];
+  approvedNomineesCount: number;
   positions: NominationPositionOption[];
   nominees: ApprovedNominee[];
 };

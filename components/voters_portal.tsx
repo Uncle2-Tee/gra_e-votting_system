@@ -186,7 +186,7 @@ export function ElectionResultsPanel({
                 </div>
                 <div className="w-fit rounded-xl bg-slate-50 px-3 py-2 sm:text-right">
                   <p className="text-lg font-semibold text-slate-900">{election.ballotsCast}</p>
-                  <p className="text-[10px] text-slate-500">Position votes counted</p>
+                  <p className="text-[10px] text-slate-500">Ballots cast</p>
                 </div>
               </div>
 
@@ -207,6 +207,10 @@ export function ElectionResultsPanel({
                     const leaders = rankedCandidates.filter(
                       (candidate) => highestVotes > 0 && candidate.votes === highestVotes,
                     );
+                    const totalPositionVotes = rankedCandidates.reduce(
+                      (total, candidate) => total + candidate.votes,
+                      0,
+                    );
 
                     return (
                       <section key={position.id} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
@@ -214,11 +218,11 @@ export function ElectionResultsPanel({
                           <div>
                             <h3 className="text-sm font-semibold text-slate-900">{position.title}</h3>
                             <p className="mt-0.5 text-[10px] text-slate-500">
-                              {rankedCandidates.length} {rankedCandidates.length === 1 ? "candidate" : "candidates"}
+                              {rankedCandidates.length} {rankedCandidates.length === 1 ? "candidate" : "candidates"} · 0.5 percentage points per vote
                             </p>
                           </div>
                           <p className="shrink-0 text-[10px] font-medium tabular-nums text-slate-500">
-                            {rankedCandidates.reduce((total, candidate) => total + candidate.votes, 0)} votes
+                            {totalPositionVotes} {totalPositionVotes === 1 ? "vote" : "votes"}
                           </p>
                         </div>
                         {election.status === "FINAL" ? (
@@ -235,7 +239,8 @@ export function ElectionResultsPanel({
                                 <>
                                   <span className="font-semibold">Winner declared:</span>{" "}
                                   {leaders[0].name} — {leaders[0].votes}{" "}
-                                  {leaders[0].votes === 1 ? "vote" : "votes"} ({leaders[0].percentage}%).
+                                  {leaders[0].votes === 1 ? "vote" : "votes"} (
+                                  {leaders[0].percentage}%).
                                 </>
                               ) : leaders.length > 1 ? (
                                 <>
@@ -305,17 +310,19 @@ export function ElectionResultsPanel({
                                       ) : null}
                                     </div>
                                   </div>
-                                  <p className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-800">
-                                    {candidate.votes}{" "}
-                                    <span className="font-normal text-slate-500">
-                                      ({candidate.percentage}%)
-                                    </span>
-                                  </p>
+                                  <div className="shrink-0 text-right">
+                                    <p className="text-sm font-bold tabular-nums text-slate-900">
+                                      {candidate.votes}
+                                    </p>
+                                    <p className="text-[10px] tabular-nums text-slate-500">
+                                      {candidate.votes === 1 ? "vote" : "votes"} · {candidate.percentage}%
+                                    </p>
+                                  </div>
                                 </div>
                                 <div
                                   className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200"
                                   role="meter"
-                                  aria-label={`${candidate.name} vote share`}
+                                  aria-label={`${candidate.name} vote progress`}
                                   aria-valuemin={0}
                                   aria-valuemax={100}
                                   aria-valuenow={candidate.percentage}
@@ -446,7 +453,7 @@ function Overview({ data }: { data: VoterPortalData }) {
             <BadgeCheck className="size-[18px]" />
           </span>
           <div>
-            <p className="text-xl font-semibold tracking-tight text-slate-950">{data.nominees.length}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{data.approvedNomineesCount}</p>
             <p className="text-[11px] text-slate-500">Approved nominee profiles</p>
           </div>
         </article>
@@ -463,8 +470,8 @@ function Overview({ data }: { data: VoterPortalData }) {
                 Meet your approved nominees
               </h2>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                {data.nominees.length > 0
-                  ? `${data.nominees.length} approved profile${data.nominees.length === 1 ? "" : "s"} available to review.`
+                {data.approvedNomineesCount > 0
+                  ? `${data.approvedNomineesCount} approved profile${data.approvedNomineesCount === 1 ? "" : "s"} available to review.`
                   : "Approved profiles will appear here after administrator review."}
               </p>
             </div>

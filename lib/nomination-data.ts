@@ -1,11 +1,11 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import { ElectionStatus, Prisma } from "@prisma/client";
 import { connection } from "next/server";
 import {
   decryptVoterField,
 } from "@/lib/voter-data-crypto";
-import { synchronizeElectionStatuses } from "@/lib/election-schedule";
+import { getEffectiveElectionStatus } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 import type {
   PendingNominationData,
@@ -52,78 +52,94 @@ function delay(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-export async function getVoterPortalData(): Promise<VoterPortalData> {
+export async function getVoterPortalData(
+  section: "overview" | "nominate" | "nominees",
+): Promise<VoterPortalData> {
   await connection();
 
   for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
     try {
-      await synchronizeElectionStatuses();
-      const [elections, positions, candidates] = await Promise.all([
-        prisma.election.findMany({
-          where: {
-            status: { in: ["SCHEDULED", "PUBLISHED", "OPEN"] },
-            startsAt: { not: null },
-            endsAt: { gte: new Date() },
-          },
-          orderBy: [{ startsAt: "asc" }, { title: "asc" }],
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            startsAt: true,
-            endsAt: true,
-            timezone: true,
-          },
-        }),
-        prisma.position.findMany({
-          where: { election: { status: { not: "ARCHIVED" } } },
-          orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
-          select: {
-            id: true,
-            title: true,
-            election: { select: { title: true } },
-          },
-        }),
-        prisma.candidate.findMany({
-          where: {
-            status: "APPROVED",
-          },
-          orderBy: [
-            { election: { startsAt: "asc" } },
-            { position: { displayOrder: "asc" } },
-            { createdAt: "asc" },
-          ],
-          select: {
-            id: true,
-            nameCiphertext: true,
-            biography: true,
-            photoData: true,
-            photoMimeType: true,
-            position: { select: { title: true } },
-            election: { select: { title: true } },
-          },
-        }),
+      const [elections, positions, candidates, approvedNomineesCount] = await Promise.all([
+        section === "overview"
+          ? prisma.election.findMany({
+              where: {
+                status: { in: ["SCHEDULED", "PUBLISHED", "OPEN"] },
+                startsAt: { not: null },
+                endsAt: { gte: new Date() },
+              },
+              orderBy: [{ startsAt: "asc" }, { title: "asc" }],
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                startsAt: true,
+                endsAt: true,
+                timezone: true,
+              },
+            })
+          : Promise.resolve([]),
+        section !== "nominees"
+          ? prisma.position.findMany({
+              where: { election: { status: { not: "ARCHIVED" } } },
+              orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
+              select: {
+                id: true,
+                title: true,
+                election: { select: { title: true } },
+              },
+            })
+          : Promise.resolve([]),
+        section !== "nominate"
+          ? prisma.candidate.findMany({
+              where: { status: "APPROVED" },
+              orderBy: [
+                { election: { startsAt: "asc" } },
+                { position: { displayOrder: "asc" } },
+                { createdAt: "asc" },
+              ],
+              select: {
+                id: true,
+                nameCiphertext: true,
+                biography: true,
+                photoMimeType: true,
+                position: { select: { title: true } },
+                election: { select: { title: true } },
+              },
+              ...(section === "overview" ? { take: 3 } : {}),
+            })
+          : Promise.resolve([]),
+        section === "overview"
+          ? prisma.candidate.count({ where: { status: "APPROVED" } })
+          : Promise.resolve(undefined),
       ]);
 
       return {
         databaseStatus: "connected",
-        elections: elections.flatMap((election) =>
-          election.startsAt && election.endsAt
-            ? [{
-                id: election.id,
-                title: election.title,
-                status:
-                  election.status === "OPEN"
-                    ? "OPEN"
-                    : election.status === "PUBLISHED"
-                      ? "PUBLISHED"
-                      : "SCHEDULED",
-                startsAt: election.startsAt.toISOString(),
-                endsAt: election.endsAt.toISOString(),
-                timezone: election.timezone,
-              }]
-            : [],
-        ),
+        elections: elections.flatMap((election) => {
+          if (!election.startsAt || !election.endsAt) {
+            return [];
+          }
+
+          const effectiveStatus = getEffectiveElectionStatus(election);
+          const status =
+            effectiveStatus === "OPEN"
+              ? "OPEN"
+              : effectiveStatus === "PUBLISHED"
+                ? "PUBLISHED"
+                : "SCHEDULED";
+
+          return [
+            {
+              id: election.id,
+              title: election.title,
+              status,
+              startsAt: election.startsAt.toISOString(),
+              endsAt: election.endsAt.toISOString(),
+              timezone: election.timezone,
+            },
+          ];
+        }),
+        approvedNomineesCount: approvedNomineesCount ?? candidates.length,
         positions: positions.map((position) => ({
           id: position.id,
           title: position.title,
@@ -134,7 +150,7 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
           name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
           biography: candidate.biography,
           photoUrl:
-            candidate.photoData && candidate.photoMimeType === "image/webp"
+            candidate.photoMimeType === "image/webp"
               ? `/admin/candidates/${candidate.id}/photo`
               : null,
           positionTitle: candidate.position.title,
@@ -154,6 +170,7 @@ export async function getVoterPortalData(): Promise<VoterPortalData> {
       return {
         databaseStatus: "unavailable",
         elections: [],
+        approvedNomineesCount: 0,
         positions: [],
         nominees: [],
       };
@@ -167,16 +184,23 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
   await connection();
 
   try {
-    await synchronizeElectionStatuses();
+    const resultElectionStatuses: ElectionStatus[] = [
+      "SCHEDULED",
+      "PUBLISHED",
+      "OPEN",
+      "CLOSED",
+      "RESULTS_PUBLISHED",
+      "ARCHIVED",
+    ];
     const resultsElectionFilter = {
       election: {
-        is: { status: { in: ["OPEN", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"] } },
+        is: { status: { in: resultElectionStatuses } },
       },
     } satisfies Prisma.BallotWhereInput & Prisma.BallotSelectionWhereInput;
     const [elections, ballotCounts, selectionCounts] = await Promise.all([
       prisma.election.findMany({
         where: {
-          status: { in: ["OPEN", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"] },
+          status: { in: resultElectionStatuses },
         },
         orderBy: [{ endsAt: "desc" }, { updatedAt: "desc" }],
         select: {
@@ -197,7 +221,6 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
                 select: {
                   id: true,
                   nameCiphertext: true,
-                  photoData: true,
                   photoMimeType: true,
                 },
               },
@@ -226,45 +249,53 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
         _count._all,
       ]),
     );
-
     return {
       databaseStatus: "connected",
-      elections: elections.map((election) => ({
-        id: election.id,
-        title: election.title,
-        status: election.status === "OPEN" ? "OPEN" as const : "FINAL" as const,
-        resultsAvailableAt:
-          (election.status === "OPEN"
-            ? election.startsAt
-            : election.resultsPublishedAt ?? election.endsAt)?.toISOString() ?? null,
-        timezone: election.timezone,
-        ballotsCast: ballotsByElection.get(election.id) ?? 0,
-        positions: election.positions.map((position) => {
-          const candidates = position.candidates.map((candidate) => ({
-            id: candidate.id,
-            name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
-            photoUrl:
-              candidate.photoData && candidate.photoMimeType === "image/webp"
-                ? `/admin/candidates/${candidate.id}/photo`
-                : null,
-            votes:
-              votesByCandidate.get(`${election.id}:${position.id}:${candidate.id}`) ?? 0,
-          }));
-          const totalVotes = candidates.reduce((total, candidate) => total + candidate.votes, 0);
+      elections: elections.flatMap((election) => {
+        const effectiveStatus = getEffectiveElectionStatus(election);
+        if (
+          !["OPEN", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"].includes(
+            effectiveStatus,
+          )
+        ) {
+          return [];
+        }
 
-          return {
-            id: position.id,
-            title: position.title,
-            candidates: candidates.map((candidate) => ({
-              ...candidate,
-              percentage:
-                totalVotes === 0
-                  ? 0
-                  : Math.round((candidate.votes / totalVotes) * 1000) / 10,
-            })),
-          };
-        }),
-      })),
+        return [
+          {
+            id: election.id,
+            title: election.title,
+            status: effectiveStatus === "OPEN" ? "OPEN" as const : "FINAL" as const,
+            resultsAvailableAt:
+              (effectiveStatus === "OPEN"
+                ? election.startsAt
+                : election.resultsPublishedAt ?? election.endsAt)?.toISOString() ?? null,
+            timezone: election.timezone,
+            ballotsCast: ballotsByElection.get(election.id) ?? 0,
+            positions: election.positions.map((position) => {
+              const candidates = position.candidates.map((candidate) => ({
+                id: candidate.id,
+                name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
+                votes:
+                  votesByCandidate.get(`${election.id}:${position.id}:${candidate.id}`) ?? 0,
+                photoUrl:
+                  candidate.photoMimeType === "image/webp"
+                    ? `/admin/candidates/${candidate.id}/photo`
+                    : null,
+              }));
+
+              return {
+                id: position.id,
+                title: position.title,
+                candidates: candidates.map((candidate) => ({
+                  ...candidate,
+                  percentage: Math.min(candidate.votes * 0.5, 100),
+                })),
+              };
+            }),
+          },
+        ];
+      }),
     };
   } catch (error) {
     logNominationDataError("published voter results", error);
@@ -287,7 +318,6 @@ export async function getPendingNominationData(): Promise<PendingNominationData>
             applicantEmailCiphertext: true,
             applicantPhoneCiphertext: true,
             biography: true,
-            photoData: true,
             photoMimeType: true,
             createdAt: true,
             election: { select: { title: true } },
@@ -303,7 +333,6 @@ export async function getPendingNominationData(): Promise<PendingNominationData>
             applicantEmailCiphertext: true,
             applicantPhoneCiphertext: true,
             biography: true,
-            photoData: true,
             photoMimeType: true,
             createdAt: true,
             election: { select: { title: true } },
@@ -344,7 +373,6 @@ function mapAdminNomination(application: {
   applicantEmailCiphertext: string | null;
   applicantPhoneCiphertext: string | null;
   biography: string | null;
-  photoData: Uint8Array<ArrayBufferLike> | null;
   photoMimeType: string | null;
   createdAt: Date;
   election: { title: string };
@@ -361,7 +389,7 @@ function mapAdminNomination(application: {
       : null,
     biography: application.biography,
     photoUrl:
-      application.photoData && application.photoMimeType === "image/webp"
+      application.photoMimeType === "image/webp"
         ? `/admin/candidates/${application.id}/photo`
         : null,
     electionTitle: application.election.title,
