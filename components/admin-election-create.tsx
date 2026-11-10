@@ -17,13 +17,13 @@ export default function AdminElectionCreate() {
   return (
     <form
       action={action}
-      className="mb-6 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-950/[0.02] sm:p-6"
+      className="mb-6 min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-950/[0.02] sm:p-6"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
           <CalendarPlus2 className="size-5" />
         </span>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold text-slate-900">Set up the next vote</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
             All positions in a voting cycle share one opening and closing time. Publish positions first and set the shared schedule later, or set both up now. Previous voting cycles remain in the schedule history.
@@ -31,23 +31,23 @@ export default function AdminElectionCreate() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="text-xs font-medium text-slate-700">
+      <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="min-w-0 text-xs font-medium text-slate-700">
           Voting opens
           <input
             type="datetime-local"
-            className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+            className="mt-1.5 h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
             name="startsAt"
             value={startsAt}
             onChange={(event) => setStartsAt(event.target.value)}
             aria-describedby="election-schedule-help"
           />
         </label>
-        <label className="text-xs font-medium text-slate-700">
+        <label className="min-w-0 text-xs font-medium text-slate-700">
           Voting closes
           <input
             type="datetime-local"
-            className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+            className="mt-1.5 h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
             name="endsAt"
             min={startsAt || undefined}
             aria-describedby="election-schedule-help"
@@ -55,9 +55,10 @@ export default function AdminElectionCreate() {
         </label>
         <div className="text-xs font-medium text-slate-700 sm:col-span-2">
           Voting time zone
-          <p id="election-schedule-help" className="mt-1.5 text-xs font-normal text-slate-600">
-            {ELECTION_TIMEZONE}. These opening and closing times apply to every position in this voting cycle.
-          </p>
+          <div id="election-schedule-help" className="mt-1.5 space-y-1 text-xs font-normal leading-5 text-slate-600">
+            <p>{ELECTION_TIMEZONE}. These opening and closing times apply to every position in this voting cycle.</p>
+            <p className="text-slate-500">Example: 10 Nov 2026, 9:00 AM to 12 Nov 2026, 5:00 PM.</p>
+          </div>
         </div>
         <div className="text-xs font-medium text-slate-700 sm:col-span-2">
           <label htmlFor="custom-position-create-election">Nomination positions</label>

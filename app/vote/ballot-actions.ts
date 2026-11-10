@@ -432,7 +432,10 @@ export async function submitPositionVote(
     return { ...INITIAL_STATE, message: "Your vote for this position was recorded." };
   } catch (error) {
     if (error instanceof Error && error.message === "POSITION_ALREADY_VOTED") {
-      return { ...INITIAL_STATE, error: "A vote for that position has already been recorded." };
+      return {
+        ...INITIAL_STATE,
+        error: "A vote for that position has already been recorded and cannot be submitted again on any device.",
+      };
     }
     if (
       error instanceof Error &&
@@ -453,7 +456,10 @@ export async function submitPositionVote(
         select: { id: true },
       });
       if (participation) {
-        return { ...INITIAL_STATE, error: "A vote for that position has already been recorded." };
+        return {
+          ...INITIAL_STATE,
+          error: "A vote for that position has already been recorded and cannot be submitted again on any device.",
+        };
       }
     }
     const errorCode =

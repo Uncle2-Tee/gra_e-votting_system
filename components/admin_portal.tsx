@@ -44,7 +44,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
             {overview.databaseStatus === "connected" ? "System data connected" : "System data unavailable"}
           </div>
         </div>
-        <div className="relative z-10 mt-6 flex items-center justify-between gap-2 border-t border-white/15 pt-5">
+        <div className="relative z-10 mt-6 flex items-center justify-between gap-2 border-t border-white/15 pt-5 md:justify-start">
           <Link
             href="/admin/nominations"
             className="inline-flex h-10 w-fit shrink-0 items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3.5 text-xs font-semibold text-white transition hover:bg-white/15"

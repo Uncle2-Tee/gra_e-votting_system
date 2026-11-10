@@ -362,7 +362,7 @@ export default function VoterBallotPage({
       </section>
 
       <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-        Keep your voter ID private. Once a vote is submitted for a position, it cannot be changed.
+        Keep your voter ID private. Each position can be voted on once; a recorded vote cannot be submitted again, even from another device.
       </p>
     </main>
   );
