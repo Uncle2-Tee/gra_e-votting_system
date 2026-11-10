@@ -47,12 +47,12 @@ export default function AdminElectionCreate() {
         </div>
       </div>
 
-      <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="min-w-0 text-xs font-medium text-slate-700">
+      <div className="mt-5 grid min-w-0 grid-cols-2 gap-2 sm:gap-4">
+        <label className="min-w-0 text-[11px] font-medium text-slate-700 sm:text-xs">
           Voting opens
           <input
             type="datetime-local"
-            className="mt-1.5 h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+            className="mt-1.5 h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 sm:px-3 sm:text-sm"
             name="startsAt"
             value={startsAt}
             onChange={(event) => setStartsAt(event.target.value)}
@@ -60,25 +60,22 @@ export default function AdminElectionCreate() {
             aria-describedby="election-date-format-help"
           />
         </label>
-        <label className="min-w-0 text-xs font-medium text-slate-700">
+        <label className="min-w-0 text-[11px] font-medium text-slate-700 sm:text-xs">
           Voting closes
           <input
             type="datetime-local"
-            className="mt-1.5 h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+            className="mt-1.5 h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 sm:px-3 sm:text-sm"
             name="endsAt"
             min={startsAt || undefined}
             lang={deviceLocale || undefined}
             aria-describedby="election-date-format-help"
           />
         </label>
-        <p id="election-date-format-help" className="text-[11px] font-normal leading-4 text-slate-500 sm:col-span-2">
+        <p id="election-date-format-help" className="col-span-2 text-[11px] font-normal leading-4 text-slate-500">
           Date format follows your device settings{dateFormatExample ? ` (example: ${dateFormatExample})` : ""}.
         </p>
-        <div className="text-xs font-medium text-slate-700 sm:col-span-2">
+        <div className="col-span-2 text-xs font-medium text-slate-700">
           <label htmlFor="custom-position-create-election">Nomination positions</label>
-          <p id="voting-positions-help" className="mt-1.5 text-[11px] leading-4 font-normal text-slate-500">
-            Select one or more positions. Candidates can select these positions on the nomination form after they are published.
-          </p>
           <div className="mt-2">
             <NominationPositionPicker
               id="create-election"

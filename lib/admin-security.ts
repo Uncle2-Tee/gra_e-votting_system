@@ -12,7 +12,7 @@ import {
 } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { cookies } from "next/headers";
-import { decryptVoterField, encryptVoterField } from "@/lib/voter-data-crypto";
+import { encryptVoterField } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE = "gra_admin_session";
@@ -204,7 +204,10 @@ function hashSessionToken(token: string) {
 }
 
 function hashLegacySessionToken(token: string) {
-  return createHmac("sha256", getSessionSecret()).update(token).digest("hex");
+  const secret = process.env.SESSION_SECRET;
+  return hasSecretValue(secret)
+    ? createHmac("sha256", secret).update(token).digest("hex")
+    : null;
 }
 
 export async function createAdminSession(userId: string) {
@@ -235,11 +238,6 @@ export async function getCurrentAdmin() {
     return null;
   }
 
-  const credentials = getAdminLoginCredentials();
-  if (!isAdminSecurityConfigured() || !credentials) {
-    return null;
-  }
-
   try {
     let session:
       | {
@@ -251,20 +249,19 @@ export async function getCurrentAdmin() {
             id: string;
             role: UserRole;
             status: AccountStatus;
-            nameCiphertext: string;
-            emailLookupHash: string;
           };
         }
       | null
       | undefined;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
+        const tokenHashes = [hashSessionToken(token)];
+        const legacyTokenHash = hashLegacySessionToken(token);
+        if (legacyTokenHash) {
+          tokenHashes.push(legacyTokenHash);
+        }
         session = await prisma.adminSession.findFirst({
-          where: {
-            tokenHash: {
-              in: [hashSessionToken(token), hashLegacySessionToken(token)],
-            },
-          },
+          where: { tokenHash: { in: tokenHashes } },
           select: {
             id: true,
             tokenHash: true,
@@ -275,8 +272,6 @@ export async function getCurrentAdmin() {
                 id: true,
                 role: true,
                 status: true,
-                nameCiphertext: true,
-                emailLookupHash: true,
               },
             },
           },
@@ -299,8 +294,7 @@ export async function getCurrentAdmin() {
       session.revokedAt ||
       session.expiresAt <= new Date() ||
       session.user.status !== "ACTIVE" ||
-      session.user.role !== "SUPER_ADMIN" ||
-      session.user.emailLookupHash !== createEnvAdminLookupHash(credentials.username)
+      session.user.role !== "SUPER_ADMIN"
     ) {
       if (session && !session.revokedAt) {
         await prisma.adminSession.update({
@@ -321,7 +315,6 @@ export async function getCurrentAdmin() {
     return {
       id: session.user.id,
       role: session.user.role,
-      name: decryptVoterField(session.user.nameCiphertext, "admin-name"),
     };
   } catch (error) {
     if (!isDatabaseConnectionFailure(error)) {
@@ -336,11 +329,14 @@ export async function revokeCurrentAdminSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (token) {
+    const tokenHashes = [hashSessionToken(token)];
+    const legacyTokenHash = hashLegacySessionToken(token);
+    if (legacyTokenHash) {
+      tokenHashes.push(legacyTokenHash);
+    }
     await prisma.adminSession.updateMany({
       where: {
-        tokenHash: {
-          in: [hashSessionToken(token), hashLegacySessionToken(token)],
-        },
+        tokenHash: { in: tokenHashes },
         revokedAt: null,
       },
       data: { revokedAt: new Date() },
