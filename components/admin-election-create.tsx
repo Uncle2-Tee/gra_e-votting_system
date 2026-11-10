@@ -25,9 +25,6 @@ export default function AdminElectionCreate() {
         </span>
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-slate-900">Set up the next vote</h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            All positions in a voting cycle share one opening and closing time. Publish positions first and set the shared schedule later, or set both up now. Previous voting cycles remain in the schedule history.
-          </p>
         </div>
       </div>
 
@@ -40,7 +37,6 @@ export default function AdminElectionCreate() {
             name="startsAt"
             value={startsAt}
             onChange={(event) => setStartsAt(event.target.value)}
-            aria-describedby="election-schedule-help"
           />
         </label>
         <label className="min-w-0 text-xs font-medium text-slate-700">
@@ -50,16 +46,8 @@ export default function AdminElectionCreate() {
             className="mt-1.5 h-11 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
             name="endsAt"
             min={startsAt || undefined}
-            aria-describedby="election-schedule-help"
           />
         </label>
-        <div className="text-xs font-medium text-slate-700 sm:col-span-2">
-          Voting time zone
-          <div id="election-schedule-help" className="mt-1.5 space-y-1 text-xs font-normal leading-5 text-slate-600">
-            <p>{ELECTION_TIMEZONE}. These opening and closing times apply to every position in this voting cycle.</p>
-            <p className="text-slate-500">Example: 10 Nov 2026, 9:00 AM to 12 Nov 2026, 5:00 PM.</p>
-          </div>
-        </div>
         <div className="text-xs font-medium text-slate-700 sm:col-span-2">
           <label htmlFor="custom-position-create-election">Nomination positions</label>
           <p id="voting-positions-help" className="mt-1.5 text-[11px] leading-4 font-normal text-slate-500">
@@ -86,14 +74,14 @@ export default function AdminElectionCreate() {
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-5 flex items-center justify-between gap-2">
         <button
           type="submit"
           name="intent"
           value="publish-positions"
           disabled={pending}
           onClick={() => setSubmitIntent("publish-positions")}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-800/20 bg-white px-4 text-xs font-semibold text-emerald-900 transition-colors hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-800/20 bg-white px-3 text-xs font-semibold text-emerald-900 transition-colors hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60 sm:px-4"
         >
           {pending && submitIntent === "publish-positions" ? "Publishing…" : "Publish positions"}
         </button>
@@ -103,7 +91,7 @@ export default function AdminElectionCreate() {
           value="schedule-vote"
           disabled={pending}
           onClick={() => setSubmitIntent("schedule-vote")}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-xs font-semibold text-white transition-colors hover:bg-emerald-900 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-900 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60 sm:px-4"
         >
           <CalendarPlus2 className="size-4" />
           {pending && submitIntent === "schedule-vote" ? "Scheduling…" : "Schedule vote"}
