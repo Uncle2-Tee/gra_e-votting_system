@@ -101,7 +101,7 @@ async function BallotPageContent({
       )
     : undefined;
   if (selectedElection && !selectedSession) {
-      redirect(`/vote?electionId=${encodeURIComponent(selectedElection.id)}`);
+      redirect(`/vote/access?electionId=${encodeURIComponent(selectedElection.id)}`);
   }
   const submittedPositionIds = selectedSession
     ? (await prisma.voteParticipation.findMany({

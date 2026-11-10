@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma, type AccountStatus, type UserRole } from "@prisma/client";
 import {
+  createHash,
   createCipheriv,
   createHmac,
   hkdfSync,
@@ -199,6 +200,10 @@ export function verifySecret(candidate: string, expected: string) {
 }
 
 function hashSessionToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function hashLegacySessionToken(token: string) {
   return createHmac("sha256", getSessionSecret()).update(token).digest("hex");
 }
 
@@ -239,6 +244,7 @@ export async function getCurrentAdmin() {
     let session:
       | {
           id: string;
+          tokenHash: string;
           expiresAt: Date;
           revokedAt: Date | null;
           user: {
@@ -253,10 +259,15 @@ export async function getCurrentAdmin() {
       | undefined;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        session = await prisma.adminSession.findUnique({
-          where: { tokenHash: hashSessionToken(token) },
+        session = await prisma.adminSession.findFirst({
+          where: {
+            tokenHash: {
+              in: [hashSessionToken(token), hashLegacySessionToken(token)],
+            },
+          },
           select: {
             id: true,
+            tokenHash: true,
             expiresAt: true,
             revokedAt: true,
             user: {
@@ -300,6 +311,13 @@ export async function getCurrentAdmin() {
       return null;
     }
 
+    if (session.tokenHash !== hashSessionToken(token)) {
+      await prisma.adminSession.update({
+        where: { id: session.id },
+        data: { tokenHash: hashSessionToken(token) },
+      });
+    }
+
     return {
       id: session.user.id,
       role: session.user.role,
@@ -320,7 +338,9 @@ export async function revokeCurrentAdminSession() {
   if (token) {
     await prisma.adminSession.updateMany({
       where: {
-        tokenHash: hashSessionToken(token),
+        tokenHash: {
+          in: [hashSessionToken(token), hashLegacySessionToken(token)],
+        },
         revokedAt: null,
       },
       data: { revokedAt: new Date() },

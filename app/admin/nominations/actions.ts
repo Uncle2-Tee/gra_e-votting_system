@@ -131,7 +131,7 @@ export async function reviewNomination(
     revalidatePath("/admin");
     revalidatePath("/admin", "layout");
     revalidatePath("/admin/nominations");
-    revalidatePath("/vote");
+    revalidatePath("/vote/access");
     revalidatePath("/vote/nominees");
     return {
       error: null,
@@ -247,7 +247,7 @@ export async function removeApprovedNomination(
     revalidatePath("/admin");
     revalidatePath("/admin", "layout");
     revalidatePath("/admin/nominations");
-    revalidatePath("/vote");
+    revalidatePath("/vote/access");
     revalidatePath("/vote/nominees");
     revalidatePath("/vote/results");
     return {

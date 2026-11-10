@@ -31,7 +31,7 @@ async function AdminLoginContent() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#f6f9fc] px-4 py-5 text-slate-900 sm:px-5 sm:py-8">
-      <section className="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-5 shadow-xl shadow-slate-950/[0.06] sm:p-6">
+      <section className="w-full max-w-md rounded-2xl border border-emerald-400 bg-white p-5 shadow-xl shadow-emerald-950/[0.08] sm:p-6">
         <div className="flex flex-col items-center text-center">
           <BrandLogo priority className="size-14 object-contain" />
           <div className="min-w-0">

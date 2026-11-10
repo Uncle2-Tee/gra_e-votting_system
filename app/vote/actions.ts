@@ -249,7 +249,7 @@ export async function submitNominationApplication(
       throw new Error("The nomination submission query returned no result.");
     }
 
-    revalidatePath("/vote");
+    revalidatePath("/vote/access");
     revalidatePath("/vote/nominate");
     revalidatePath("/admin", "layout");
     revalidatePath("/admin/nominations");

@@ -238,7 +238,7 @@ export default function VoterBallotPage({
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <h1 className="text-xl font-bold text-slate-950">Voting is not open</h1>
           <p className="mt-2 text-sm text-slate-600">There are no elections accepting ballots right now.</p>
-          <Link href="/vote" className="mt-4 inline-flex text-sm font-semibold text-emerald-800 hover:underline">
+          <Link href="/vote/access" className="mt-4 inline-flex text-sm font-semibold text-emerald-800 hover:underline">
             Return to voter access
           </Link>
         </div>
@@ -249,7 +249,7 @@ export default function VoterBallotPage({
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-7 sm:px-8 sm:py-9">
       <Link
-        href="/vote"
+        href="/vote/access"
         className="mb-5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 transition hover:text-emerald-800"
       >
         <ArrowLeft className="size-3.5" />
@@ -322,7 +322,7 @@ export default function VoterBallotPage({
             />
           </label>
           <p className="mt-2 text-[11px] text-blue-900">
-            Need to verify your details or generate an ID? <Link href="/vote" className="font-semibold underline">Return to voter access</Link>.
+            Need to verify your details or generate an ID? <Link href="/vote/access" className="font-semibold underline">Return to voter access</Link>.
           </p>
         </section>
       ) : (

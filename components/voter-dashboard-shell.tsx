@@ -19,7 +19,7 @@ const navigation = [
   { section: "overview", label: "Overview", href: "/vote/overview", icon: LayoutDashboard },
   { section: "nominate", label: "Nomination form", href: "/vote/nominate", icon: FilePlus2 },
   { section: "nominees", label: "Approved nominees", href: "/vote/nominees", icon: BadgeCheck },
-  { section: "ballot", label: "Vote", href: "/vote", icon: Vote },
+  { section: "ballot", label: "Vote", href: "/vote/access", icon: Vote },
   { section: "results", label: "Results", href: "/vote/results", icon: ChartNoAxesCombined },
 ] as const;
 
@@ -31,7 +31,7 @@ export default function VoterDashboardShell({
   const pathname = usePathname();
   const activePage = navigation.find((item) =>
     item.section === "ballot"
-      ? pathname === "/vote" || pathname === "/vote/ballot"
+      ? pathname === "/vote/access" || pathname === "/vote/ballot"
       : item.href === pathname,
   ) ?? navigation[0];
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);

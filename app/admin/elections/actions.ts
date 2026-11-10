@@ -725,6 +725,6 @@ function revalidateElectionSchedule() {
   revalidatePath("/admin", "layout");
   revalidatePath("/admin/elections");
   revalidatePath("/admin/eligibility");
-  revalidatePath("/vote");
+  revalidatePath("/vote/access");
   revalidatePath("/vote/nominate");
 }
