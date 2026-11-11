@@ -6,7 +6,10 @@ import {
   ClipboardList,
   Vote,
 } from "lucide-react";
-import { ElectionResultsPanel } from "@/components/voters_portal";
+import {
+  ElectionResultsPanel,
+  ElectionWinnersPanel,
+} from "@/components/voters_portal";
 import PageLoading from "@/components/page-loading";
 import { getVoterResultsData } from "@/lib/nomination-data";
 
@@ -68,6 +71,10 @@ async function AdminResults() {
         ) : null}
       </header>
 
+      <div className="mt-6">
+        <ElectionWinnersPanel data={results} />
+      </div>
+
       <section aria-label="Results summary" className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {metrics.map(({ label, value, detail, icon: Icon, iconStyle }) => (
           <article
@@ -93,7 +100,11 @@ async function AdminResults() {
             Election breakdown
           </h2>
         </div>
-        <ElectionResultsPanel data={results} showHeading={false} />
+        <ElectionResultsPanel
+          data={results}
+          showHeading={false}
+          showHighlights={false}
+        />
       </section>
     </main>
   );

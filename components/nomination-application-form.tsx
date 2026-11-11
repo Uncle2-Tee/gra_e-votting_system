@@ -306,7 +306,7 @@ export default function NominationApplicationForm({
         </button>
       </form>
 
-      <aside className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
+      <aside className="h-fit self-start rounded-2xl border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
         <span className="flex size-10 items-center justify-center rounded-xl bg-white text-emerald-800 ring-1 ring-slate-200">
           <ShieldCheck className="size-5" />
         </span>

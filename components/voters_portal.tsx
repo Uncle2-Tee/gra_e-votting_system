@@ -125,12 +125,123 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
   );
 }
 
+export function ElectionWinnersPanel({ data }: { data: VoterResultsData }) {
+  if (data.databaseStatus === "unavailable") {
+    return null;
+  }
+
+  const highlights = data.elections
+    .filter((election) => election.status === "FINAL")
+    .flatMap((election) =>
+      election.positions.flatMap((position) => {
+        const highestVotes = Math.max(
+          0,
+          ...position.candidates.map((candidate) => candidate.votes),
+        );
+        const leaders =
+          highestVotes > 0
+            ? position.candidates.filter(
+                (candidate) => candidate.votes === highestVotes,
+              )
+            : [];
+
+        if (leaders.length === 0) {
+          return [];
+        }
+
+        return [{ election, position, leaders }];
+      }),
+    );
+
+  if (highlights.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      aria-labelledby="results-highlights-heading"
+      className="overflow-hidden rounded-2xl border border-emerald-900/10 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 p-5 text-white shadow-lg shadow-emerald-950/10"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-emerald-100 ring-1 ring-white/10">
+          <Award className="size-5" />
+        </span>
+        <div>
+          <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-200 uppercase">
+            Results at a glance
+          </p>
+          <h2 id="results-highlights-heading" className="mt-1 text-lg font-semibold tracking-tight">
+            Election winners
+          </h2>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {highlights.map(({ election, position, leaders }) => {
+          const isTie = leaders.length > 1;
+          const label = isTie ? "Tied winners" : "Winner";
+
+          return (
+            <article
+              key={`${election.id}:${position.id}`}
+              className="min-w-0 rounded-xl border border-white/10 bg-white/[0.08] p-4 backdrop-blur-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-[10px] font-medium text-emerald-100/75">
+                  {election.title}
+                </p>
+                <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[9px] font-semibold text-emerald-50">
+                  {label}
+                </span>
+              </div>
+              <h3 className="mt-2 text-xs font-medium text-white/75">
+                {position.title}
+              </h3>
+              <ul className="mt-3 space-y-3">
+                {leaders.map((candidate) => (
+                  <li key={candidate.id} className="flex min-w-0 items-center gap-3">
+                    {candidate.photoUrl ? (
+                      <Image
+                        src={candidate.photoUrl}
+                        alt={`${candidate.name} profile`}
+                        width={48}
+                        height={48}
+                        unoptimized
+                        className="size-12 shrink-0 rounded-full object-cover ring-2 ring-white/20"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-900 ring-2 ring-white/20"
+                      >
+                        {candidate.name
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((part) => part.charAt(0).toUpperCase())
+                          .join("")}
+                      </span>
+                    )}
+                    <p className="min-w-0 break-words text-base font-semibold leading-6 text-white">
+                      {candidate.name}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function ElectionResultsPanel({
   data,
   showHeading = true,
+  showHighlights = true,
 }: {
   data: VoterResultsData;
   showHeading?: boolean;
+  showHighlights?: boolean;
 }) {
   const liveResults = data.elections.some((election) => election.status === "OPEN");
   return (
@@ -160,6 +271,7 @@ export function ElectionResultsPanel({
         </div>
       ) : (
         <div className="mt-6 space-y-5">
+          {showHighlights ? <ElectionWinnersPanel data={data} /> : null}
           {data.elections.map((election) => (
             <article key={election.id} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
               <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start">
@@ -472,7 +584,7 @@ function Overview({ data }: { data: VoterPortalData }) {
           </Link>
         </article>
 
-        <aside className="hidden rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 transition duration-200 hover:shadow-md sm:block sm:p-6">
+        <aside className="hidden h-fit self-start rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 transition duration-200 hover:shadow-md sm:block sm:p-6">
           <span className="flex size-10 items-center justify-center rounded-xl bg-white text-emerald-800 ring-1 ring-emerald-900/10">
             <ShieldCheck className="size-5" />
           </span>
