@@ -44,10 +44,10 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
             {overview.databaseStatus === "connected" ? "System data connected" : "System data unavailable"}
           </div>
         </div>
-        <div className="relative z-10 mt-6 flex items-center justify-between gap-2 border-t border-white/15 pt-5 md:justify-start">
+        <div className="relative z-10 mt-6 flex flex-wrap items-center gap-3 border-t border-white/15 pt-5">
           <Link
             href="/admin/nominations"
-            className="inline-flex h-10 w-fit shrink-0 items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3.5 text-xs font-semibold text-white transition hover:bg-white/15"
+            className="inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-xs font-semibold text-emerald-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
           >
             <FileCheck2 className="size-4" />
             <span className="sm:hidden">Review</span>
@@ -56,7 +56,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
           </Link>
           <Link
             href="/admin/eligibility"
-            className="inline-flex h-10 w-fit shrink-0 items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3.5 text-xs font-semibold text-white transition hover:bg-white/15"
+            className="inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl border border-white/35 bg-white/10 px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-white/20 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
           >
             <Settings2 className="size-4" />
             <span className="sm:hidden">Imports</span>
