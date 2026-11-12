@@ -51,7 +51,11 @@ function isRetryableDatabaseConnectionFailure(error: unknown) {
       : error instanceof Prisma.PrismaClientInitializationError
         ? error.message.match(/\bP\d{4}\b/)?.[0] ?? error.errorCode
         : undefined;
-  return ["P1002", "P1008", "P1017", "P2024"].includes(errorCode ?? "");
+  return (
+    ["P1001", "P1002", "P1008", "P1017", "P2024"].includes(errorCode ?? "") ||
+    (error instanceof Prisma.PrismaClientInitializationError &&
+      /can't reach database server/i.test(error.message))
+  );
 }
 
 function logAdminSessionDatabaseFailure(error: unknown) {
@@ -59,12 +63,15 @@ function logAdminSessionDatabaseFailure(error: unknown) {
     error instanceof Prisma.PrismaClientKnownRequestError
       ? error.code
       : error instanceof Prisma.PrismaClientInitializationError
-        ? error.errorCode ?? "INITIALIZATION"
+      ? error.message.match(/\bP\d{4}\b/)?.[0] ??
+        (/can't reach database server/i.test(error.message)
+          ? "P1001"
+          : error.errorCode ?? "INITIALIZATION")
       : "UNAVAILABLE";
-  console.error("Could not verify the administrator session because the database is unavailable.", {
-    errorName: error instanceof Error ? error.name : "UnknownError",
-    errorCode,
-  });
+  const errorName = error instanceof Error ? error.name : "UnknownError";
+  console.error(
+    `Could not verify the administrator session because the database is unavailable. errorName=${errorName} errorCode=${errorCode}`,
+  );
 }
 
 function hasSecretValue(value: string | undefined): value is string {
@@ -281,7 +288,7 @@ export async function getCurrentAdmin() {
         if (attempt === 2 || !isRetryableDatabaseConnectionFailure(error)) {
           throw error;
         }
-        await delay(150 * (attempt + 1));
+        await delay(250 * (attempt + 1));
       }
     }
 

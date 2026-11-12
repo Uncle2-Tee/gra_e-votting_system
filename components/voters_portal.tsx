@@ -12,8 +12,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import CandidateApplicationForm from "@/components/candidate-application-form";
-import ResultsAutoRefresh from "@/components/results-auto-refresh";
 import type { VoterPortalData, VoterResultsData } from "@/lib/candidate-types";
+import { getElectionDisplayTitle } from "@/lib/election-display-title";
 import { getPositionColors } from "@/lib/position-colors";
 
 type PortalSection = "overview" | "candidates" | "candidate-application" | "results";
@@ -198,7 +198,7 @@ export function ElectionWinnersPanel({ data }: { data: VoterResultsData }) {
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="truncate text-[10px] font-medium text-emerald-100/75">
-                  {election.title}
+                  {getElectionDisplayTitle(election.title)}
                 </p>
                 <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[9px] font-semibold text-emerald-50">
                   {label}
@@ -257,10 +257,8 @@ export function ElectionResultsPanel({
   showHeading?: boolean;
   showHighlights?: boolean;
 }) {
-  const liveResults = data.elections.some((election) => election.status === "OPEN");
   return (
     <>
-      <ResultsAutoRefresh live={liveResults} />
       {showHeading ? (
         <PageHeading
           eyebrow="Election results"
@@ -294,7 +292,7 @@ export function ElectionResultsPanel({
                     {election.status === "OPEN" ? "Live election results" : "Final election results"}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">
-                    {election.title}
+                    {getElectionDisplayTitle(election.title)}
                   </h2>
                   <p className="mt-1 text-[11px] text-slate-500">
                     {election.resultsAvailableAt ? (
@@ -555,6 +553,89 @@ function Overview({ data }: { data: VoterPortalData }) {
           </div>
         </article>
       </section>
+
+      {data.elections.length > 0 ? (
+        <section aria-labelledby="voter-election-schedule" className="mt-7">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-700 uppercase">
+                Election schedule
+              </p>
+              <h2
+                id="voter-election-schedule"
+                className="mt-1 text-base font-semibold text-slate-950"
+              >
+                Elections for you
+              </h2>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+              {data.elections.length} available
+            </span>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {data.elections.map((election) => {
+              const isOpen = election.status === "OPEN";
+              const canAccessBallot =
+                data.ballotingEnabled && election.hasApprovedCandidates;
+              const statusLabel = !data.ballotingEnabled
+                ? "Voting setup in progress"
+                : isOpen
+                  ? election.hasApprovedCandidates
+                    ? "Voting is open"
+                    : "Awaiting approved candidates"
+                  : "Upcoming";
+
+              return (
+                <article
+                  key={election.id}
+                  className="flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md sm:p-5"
+                >
+                  <div className="min-w-0">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                        isOpen && election.hasApprovedCandidates && data.ballotingEnabled
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-sky-200 bg-sky-50 text-sky-800"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`size-1.5 rounded-full ${
+                          isOpen && election.hasApprovedCandidates && data.ballotingEnabled
+                            ? "bg-emerald-600"
+                            : "bg-sky-600"
+                        }`}
+                      />
+                      {statusLabel}
+                    </span>
+                    <h3 className="mt-3 truncate text-sm font-semibold text-slate-900">
+                      {getElectionDisplayTitle(election.title)}
+                    </h3>
+                    <p className="mt-2 text-xs leading-5 text-slate-600">
+                      {isOpen ? "Closes" : "Voting opens"}{" "}
+                      {new Intl.DateTimeFormat("en", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        timeZone: election.timezone,
+                      }).format(new Date(isOpen ? election.endsAt : election.startsAt))}{" "}
+                      <span className="text-slate-500">({election.timezone})</span>
+                    </p>
+                  </div>
+                  {canAccessBallot ? (
+                    <Link
+                      className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 active:scale-[0.99]"
+                      href={`/vote/access?electionId=${encodeURIComponent(election.id)}`}
+                    >
+                      {isOpen ? "Vote now" : "View voting schedule"}
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
         <article className="rounded-2xl border border-slate-200/80 bg-white p-5 transition duration-200 hover:border-emerald-200 hover:shadow-md sm:p-6">

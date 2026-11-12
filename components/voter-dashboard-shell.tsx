@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   BadgeCheck,
@@ -29,12 +29,30 @@ export default function VoterDashboardShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const activePage = navigation.find((item) =>
     item.section === "ballot"
       ? pathname === "/vote/access" || pathname === "/vote/ballot"
       : item.href === pathname,
   ) ?? navigation[0];
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+    const intervalId = window.setInterval(refreshWhenVisible, 10_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+    };
+  }, [router]);
 
   return (
     <main className="min-h-dvh bg-[#f6f9fc] text-slate-900 lg:pl-[272px]">

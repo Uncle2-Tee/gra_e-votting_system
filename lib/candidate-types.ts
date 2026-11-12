@@ -25,6 +25,7 @@ export type ApprovedCandidate = {
 
 export type VoterPortalData = {
   databaseStatus: "connected" | "unavailable";
+  ballotingEnabled: boolean;
   elections: {
     id: string;
     title: string;
@@ -32,6 +33,7 @@ export type VoterPortalData = {
     startsAt: string;
     endsAt: string;
     timezone: string;
+    hasApprovedCandidates: boolean;
   }[];
   approvedCandidatesCount: number;
   positions: CandidatePositionOption[];

@@ -200,7 +200,7 @@ export default function CandidateApplicationForm({
           >
             {unavailable
               ? "Available positions are temporarily unavailable because election data could not be loaded."
-              : "Candidate applications are not available right now. Administrators can publish positions for upcoming elections."}
+              : "Candidate applications are not available right now. Administrators can add positions for upcoming elections."}
           </p>
         ) : null}
 

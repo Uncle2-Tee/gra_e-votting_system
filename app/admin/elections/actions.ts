@@ -1,6 +1,6 @@
 "use server";
 
-import { Prisma, type ElectionStatus } from "@prisma/client";
+import type { ElectionStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -21,17 +21,21 @@ import {
 } from "@/lib/candidate-positions";
 import { prisma } from "@/lib/prisma";
 
-export type CreateElectionState = {
+export type ElectionActionState = {
   error: string | null;
   success: string | null;
 };
 
-export type UpdateElectionScheduleState = CreateElectionState;
-export type AddElectionPositionsState = CreateElectionState;
-export type RemoveElectionPositionState = CreateElectionState;
-export type DeleteElectionState = CreateElectionState;
+export type UpdateElectionScheduleState = ElectionActionState;
+export type AddElectionPositionsState = ElectionActionState;
+export type RemoveElectionPositionState = ElectionActionState;
+export type DeleteElectionState = ElectionActionState;
+export type AddDraftElectionPositionState = ElectionActionState & {
+  electionId: string | null;
+  positions: { id: string; title: string }[];
+};
 
-const INITIAL_STATE: CreateElectionState = { error: null, success: null };
+const INITIAL_STATE: ElectionActionState = { error: null, success: null };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHUNK_SIZE = 500;
 
@@ -48,21 +52,61 @@ function readText(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function logElectionActionFailure(action: string, error: unknown) {
-  const errorCode =
-    error instanceof Prisma.PrismaClientKnownRequestError
-      ? error.code
-      : "UNKNOWN";
-  console.error(action, {
-    errorName: error instanceof Error ? error.name : "UnknownError",
-    errorCode,
-  });
+function getElectionActionErrorCode(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "UNKNOWN";
+  }
+  if ("code" in error && typeof error.code === "string" && /^P\d{4}$/.test(error.code)) {
+    return error.code;
+  }
+  if ("errorCode" in error && typeof error.errorCode === "string") {
+    return error.errorCode;
+  }
+  return (
+    error.message.match(/\bP\d{4}\b/)?.[0] ??
+    (/can't reach database server/i.test(error.message) ? "P1001" : "UNKNOWN")
+  );
 }
 
-export async function createElection(
-  _previousState: CreateElectionState,
+function logElectionActionFailure(action: string, error: unknown) {
+  const errorCode = getElectionActionErrorCode(error);
+  const errorName = error instanceof Error ? error.name : "UnknownError";
+  console.error(`${action} errorName=${errorName} errorCode=${errorCode}`);
+}
+
+function isRetryableDatabaseConnectionFailure(error: unknown) {
+  const errorCode = getElectionActionErrorCode(error);
+  return (
+    ["P1001", "P1002", "P2024"].includes(errorCode) ||
+    (error instanceof Error && /can't reach database server/i.test(error.message))
+  );
+}
+
+async function retryDatabaseConnection<T>(operation: () => Promise<T>) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === 2 || !isRetryableDatabaseConnectionFailure(error)) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw new Error("Database retry attempts ended unexpectedly.");
+}
+
+export async function addDraftElectionPosition(
+  previousState: AddDraftElectionPositionState,
   formData: FormData,
-): Promise<CreateElectionState> {
+): Promise<AddDraftElectionPositionState> {
+  const withError = (error: string, electionId = previousState.electionId) => ({
+    ...previousState,
+    error,
+    success: null,
+    electionId,
+  });
+
   let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
   try {
     admin = await getCurrentAdmin();
@@ -70,153 +114,204 @@ export async function createElection(
     if (!isAdminDatabaseUnavailableError(error)) {
       throw error;
     }
-    return {
-      ...INITIAL_STATE,
-      error: "Elections cannot be created right now because the database is unavailable.",
-    };
+    return withError(
+      "Positions cannot be added right now because the database is unavailable.",
+    );
   }
 
   if (!admin) {
     redirect("/admin/login");
   }
   if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
-    return { ...INITIAL_STATE, error: "You are not authorized to configure voting." };
+    return withError("You are not authorized to configure election positions.");
   }
 
-  const positions = formData
-    .getAll("positions")
-    .filter((value): value is string => typeof value === "string")
-    .map((position) => position.trim().normalize("NFKC"));
-  const intent = readText(formData, "intent") || "schedule-vote";
-  if (intent !== "publish-positions" && intent !== "schedule-vote") {
-    return { ...INITIAL_STATE, error: "Choose whether to publish positions or schedule voting." };
+  const positionName = (
+    readText(formData, "customPosition") ||
+    readText(formData, "standardPosition")
+  ).normalize("NFKC");
+  const electionIdValue = readText(formData, "electionId");
+  if (!hasValidPositionNames([positionName])) {
+    return withError(
+      `Enter a position name of 1 to ${MAX_POSITION_TITLE_LENGTH} characters.`,
+      electionIdValue || previousState.electionId,
+    );
   }
-  const publishPositionsOnly = intent === "publish-positions";
-  const startsAtValue = readText(formData, "startsAt");
-  const endsAtValue = readText(formData, "endsAt");
-
-  if (
-    !hasValidPositionNames(positions)
-  ) {
-    return {
-      ...INITIAL_STATE,
-      error: `Enter 1 to ${MAX_ELECTION_POSITIONS} unique position names, each ${MAX_POSITION_TITLE_LENGTH} characters or fewer.`,
-    };
+  if (electionIdValue && !UUID_PATTERN.test(electionIdValue)) {
+    return withError("The draft election is invalid. Refresh and try again.");
   }
-
-  let startsAt: Date | null = null;
-  let endsAt: Date | null = null;
-  if (!publishPositionsOnly) {
-    startsAt = parseElectionDateTime(startsAtValue, ELECTION_TIMEZONE);
-    endsAt = parseElectionDateTime(endsAtValue, ELECTION_TIMEZONE);
-    if (!startsAt || !endsAt) {
-      return { ...INITIAL_STATE, error: "Enter valid voting opening and closing times." };
-    }
-    if (startsAt <= new Date()) {
-      return { ...INITIAL_STATE, error: "The voting opening time must be in the future." };
-    }
-    if (endsAt <= startsAt) {
-      return {
-        ...INITIAL_STATE,
-        error: "The voting closing time must be after its opening time.",
-      };
-    }
-  }
-  const votingStartsAt = startsAt ?? new Date();
-  const cycleLabel = new Intl.DateTimeFormat("en", {
-    timeZone: ELECTION_TIMEZONE,
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(votingStartsAt);
-  const title = publishPositionsOnly
-    ? `GRA Election - Candidate Applications ${cycleLabel}`
-    : `GRA Election - ${cycleLabel}`;
-  const initialStatus = publishPositionsOnly ? "DRAFT" : "SCHEDULED";
 
   try {
-    await prisma.$transaction(async (transaction) => {
-      await transaction.$queryRaw`
-        SELECT pg_advisory_xact_lock(604218731)::text AS lock_result
-      `;
-      const created = await transaction.election.create({
-        data: {
-          title,
-          timezone: ELECTION_TIMEZONE,
-          startsAt,
-          endsAt,
-          status: initialStatus,
-          createdById: admin.id,
-        },
-        select: { id: true },
-      });
-
-      const registeredVoters = await transaction.voter.findMany({
-        where: { status: "ACTIVE" },
-        select: { id: true },
-      });
-      for (const batch of chunks(registeredVoters, CHUNK_SIZE)) {
-        await transaction.electionVoter.createMany({
-          data: batch.map(({ id }) => ({
-            electionId: created.id,
-            voterId: id,
-            status: "ELIGIBLE",
-          })),
-          skipDuplicates: true,
-        });
+    const saved = await retryDatabaseConnection(() =>
+      prisma.$transaction(async (transaction) => {
+      let electionId = electionIdValue;
+      if (!electionId) {
+        await transaction.$queryRaw`
+          SELECT pg_advisory_xact_lock(604218731)::text AS lock_result
+        `;
+        const [existingDraft] = await transaction.$queryRaw<{ id: string }[]>`
+          SELECT "id"
+          FROM "Election"
+          WHERE "createdById" = ${admin.id}::uuid
+            AND "status" = 'DRAFT'::"ElectionStatus"
+            AND "startsAt" IS NULL
+            AND "endsAt" IS NULL
+            AND "title" LIKE 'GRA Election - Candidate Applications %'
+          ORDER BY "createdAt" DESC
+          LIMIT 1
+          FOR UPDATE
+        `;
+        if (existingDraft) {
+          electionId = existingDraft.id;
+        } else {
+          const now = new Date();
+          const cycleLabel = new Intl.DateTimeFormat("en", {
+            timeZone: ELECTION_TIMEZONE,
+            dateStyle: "medium",
+            timeStyle: "short",
+          }).format(now);
+          const election = await transaction.election.create({
+            data: {
+              title: `GRA Election - Candidate Applications ${cycleLabel}`,
+              timezone: ELECTION_TIMEZONE,
+              status: "DRAFT",
+              createdById: admin.id,
+            },
+            select: { id: true },
+          });
+          electionId = election.id;
+          await transaction.auditLog.create({
+            data: {
+              actorId: admin.id,
+              action: "ELECTION_CREATED",
+              entityType: "ELECTION",
+              entityId: electionId,
+              outcome: "DRAFT",
+              metadata: { candidateApplicationsOnly: true },
+            },
+          });
+        }
+      } else {
+        const [election] = await transaction.$queryRaw<{
+          id: string;
+          status: ElectionStatus;
+          startsAt: Date | null;
+          endsAt: Date | null;
+        }[]>`
+          SELECT "id", "status", "startsAt", "endsAt"
+          FROM "Election"
+          WHERE "id" = ${electionId}::uuid
+          FOR UPDATE
+        `;
+        if (!election) {
+          return { error: "The draft election could not be found." as const };
+        }
+        if (
+          election.status !== "DRAFT" ||
+          election.startsAt !== null ||
+          election.endsAt !== null
+        ) {
+          return {
+            error: "This election is already scheduled. Add positions from its Voting setup card instead." as const,
+          };
+        }
       }
 
-      await transaction.position.createMany({
-        data: positions.map((position, index) => ({
-          electionId: created.id,
-          title: position,
-          displayOrder: index,
-        })),
+      const existingPositions = await transaction.position.findMany({
+        where: { electionId },
+        orderBy: { displayOrder: "asc" },
+        select: { id: true, title: true, displayOrder: true },
       });
+      if (existingPositions.length >= MAX_ELECTION_POSITIONS) {
+        return {
+          error: `An election can have at most ${MAX_ELECTION_POSITIONS} positions.` as const,
+          electionId,
+          positions: existingPositions.map(({ id, title }) => ({ id, title })),
+        };
+      }
+      if (
+        existingPositions.some(
+          (position) =>
+            position.title.toLocaleLowerCase("en") ===
+            positionName.toLocaleLowerCase("en"),
+        )
+      ) {
+        return {
+          error: "That position has already been added." as const,
+          electionId,
+          positions: existingPositions.map(({ id, title }) => ({ id, title })),
+        };
+      }
 
+      await transaction.position.create({
+        data: {
+          electionId,
+          title: positionName,
+          displayOrder: existingPositions.length,
+        },
+      });
       await transaction.auditLog.create({
         data: {
           actorId: admin.id,
-          action: "ELECTION_CREATED",
+          action: "ELECTION_POSITIONS_ADDED",
           entityType: "ELECTION",
-          entityId: created.id,
-          outcome: initialStatus,
-          metadata: {
-            timezone: ELECTION_TIMEZONE,
-            startsAt: startsAt?.toISOString() ?? null,
-            endsAt: endsAt?.toISOString() ?? null,
-            positions,
-          },
+          entityId: electionId,
+          outcome: "UPDATED",
+          metadata: { positions: [positionName] },
         },
       });
-    });
 
-    revalidateElectionSchedule();
-    if (publishPositionsOnly) {
+      const positions = await transaction.position.findMany({
+        where: { electionId },
+        orderBy: { displayOrder: "asc" },
+        select: { id: true, title: true },
+      });
+      return { electionId, positions };
+      }),
+    );
+
+    if (typeof saved.error === "string") {
       return {
-        error: null,
-        success: "Positions are published. Candidates can now apply and be reviewed before voting is scheduled.",
+        ...previousState,
+        error: saved.error,
+        success: null,
+        electionId:
+          "electionId" in saved && typeof saved.electionId === "string"
+            ? saved.electionId
+            : electionIdValue || previousState.electionId,
+        positions:
+          "positions" in saved && Array.isArray(saved.positions)
+            ? saved.positions
+            : previousState.positions,
       };
     }
-    if (!startsAt || !endsAt) {
-      return { ...INITIAL_STATE, error: "Enter valid voting opening and closing times." };
-    }
+
+    revalidateElectionSchedule();
     return {
       error: null,
-      success: `Voting is scheduled to open on ${startsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} and close on ${endsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} (${ELECTION_TIMEZONE}). Candidates may apply for the selected positions.`,
+      success: `"${positionName}" is now available on the voter candidate application form.`,
+      electionId: saved.electionId,
+      positions: saved.positions,
     };
   } catch (error) {
-    logElectionActionFailure(
-      publishPositionsOnly
-        ? "Position publishing failed."
-        : "Election creation failed.",
-      error,
+    logElectionActionFailure("Draft election position addition failed.", error);
+    if (isRetryableDatabaseConnectionFailure(error)) {
+      return withError(
+        "The database connection is temporarily unavailable. Please try adding the position again in a moment.",
+        electionIdValue || previousState.electionId,
+      );
+    }
+    const errorCode = getElectionActionErrorCode(error);
+    if (errorCode !== "UNKNOWN") {
+      return withError(
+        `The position could not be added (database error ${errorCode}). Please refresh and try again.`,
+        electionIdValue || previousState.electionId,
+      );
+    }
+    return withError(
+      "An unexpected server error prevented the position from being saved. Refresh the page and try again.",
+      electionIdValue || previousState.electionId,
     );
-    return {
-      ...INITIAL_STATE,
-      error: publishPositionsOnly
-        ? "Positions could not be published. Please try again."
-        : "The election could not be created. Please try again.",
-    };
   }
 }
 
@@ -534,6 +629,14 @@ export async function updateElectionSchedule(
           error: "Only elections that have not opened or are currently open or closed can have their voting times changed.",
         };
       }
+      if (status === "DRAFT") {
+        const positionCount = await transaction.position.count({
+          where: { electionId },
+        });
+        if (positionCount === 0) {
+          return { error: "Add at least one position before scheduling voting." };
+        }
+      }
 
       const startsAt = status === "OPEN"
         ? election.startsAt
@@ -550,6 +653,22 @@ export async function updateElectionSchedule(
       }
       if (startsAt && endsAt <= startsAt) {
         return { error: "The voting closing time must be after its opening time." };
+      }
+      if (status === "DRAFT") {
+        const activeVoters = await transaction.voter.findMany({
+          where: { status: "ACTIVE" },
+          select: { id: true },
+        });
+        for (const batch of chunks(activeVoters, CHUNK_SIZE)) {
+          await transaction.electionVoter.createMany({
+            data: batch.map(({ id }) => ({
+              electionId,
+              voterId: id,
+              status: "ELIGIBLE",
+            })),
+            skipDuplicates: true,
+          });
+        }
       }
 
       const nextStatus: ElectionStatus =
@@ -584,7 +703,7 @@ export async function updateElectionSchedule(
         timezone: election.timezone,
         status: nextStatus,
       };
-    });
+    }, { maxWait: 15_000, timeout: 60_000 });
 
     if ("error" in result && typeof result.error === "string") {
       return { ...INITIAL_STATE, error: result.error };
@@ -659,9 +778,6 @@ export async function deleteElection(
         return { error: "The selected election could not be found." };
       }
       const currentStatus = getEffectiveElectionStatus(election);
-      if (!["SCHEDULED", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"].includes(currentStatus)) {
-        return { error: "Only scheduled or closed elections can be deleted." };
-      }
 
       const [ballotCount, participationCount] = await Promise.all([
         transaction.ballot.count({ where: { electionId } }),
@@ -725,6 +841,7 @@ function revalidateElectionSchedule() {
   revalidatePath("/admin", "layout");
   revalidatePath("/admin/elections");
   revalidatePath("/admin/eligibility");
+  revalidatePath("/vote/overview");
   revalidatePath("/vote/access");
   revalidatePath("/vote/candidate-application");
 }

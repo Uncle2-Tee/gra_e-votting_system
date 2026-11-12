@@ -13,6 +13,7 @@ import AdminElectionDeleteButton from "@/components/admin-election-delete-button
 import AdminElectionPositionManager from "@/components/admin-election-position-manager";
 import AdminElectionScheduleEditor from "@/components/admin-election-schedule-editor";
 import AdminCandidateReview from "@/components/admin-candidate-review";
+import { getElectionDisplayTitle } from "@/lib/election-display-title";
 import type { AdminElectionSchedules, AdminOverview } from "@/lib/admin-overview";
 import type { PendingCandidateData } from "@/lib/candidate-types";
 
@@ -75,13 +76,29 @@ export function AdminElectionsPage({
 }: {
   schedules: AdminElectionSchedules;
 }) {
+  const draftElection =
+    schedules.databaseStatus === "connected"
+      ? schedules.elections.find(
+          (election) =>
+            election.status === "DRAFT" &&
+            election.startsAt === null &&
+            election.endsAt === null &&
+            election.title.startsWith("GRA Election - Candidate Applications "),
+        )
+      : undefined;
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
       <PageHeading
         eyebrow="Election operations"
         title="Voting setup"
       />
-      <AdminElectionCreate />
+      <AdminElectionCreate
+        initialDraft={
+          draftElection
+            ? { electionId: draftElection.id, positions: draftElection.positions }
+            : null
+        }
+      />
       <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-3">
@@ -95,17 +112,21 @@ export function AdminElectionsPage({
               </p>
             </div>
           </div>
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-600">
-            <CalendarDays className="size-3.5" />
-            Schedule overview
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-600">
+              <CalendarDays className="size-3.5" />
+              Schedule overview
+            </span>
+          </div>
         </div>
         {schedules.elections.length > 0 ? (
           <ul className="divide-y divide-slate-100">
             {schedules.elections.map((election) => (
               <li key={election.id} className="flex min-w-0 flex-col gap-2 px-4 py-4 transition-colors hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-800">{election.title}</p>
+                  <p className="truncate text-sm font-semibold text-slate-800">
+                    {getElectionDisplayTitle(election.title)}
+                  </p>
                   <p className="mt-1 text-[11px] text-slate-500">
                     Opens {formatElectionDate(election.startsAt, election.timezone)}
                     {election.endsAt ? ` · Closes ${formatElectionDate(election.endsAt, election.timezone)}` : ""}
@@ -117,12 +138,10 @@ export function AdminElectionsPage({
                   <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusStyle(election.status)}`}>
                     {election.status.replaceAll("_", " ")}
                   </span>
-                  {["SCHEDULED", "CLOSED", "RESULTS_PUBLISHED", "ARCHIVED"].includes(election.status) ? (
-                    <AdminElectionDeleteButton
-                      electionId={election.id}
-                      title={election.title}
-                    />
-                  ) : null}
+                  <AdminElectionDeleteButton
+                    electionId={election.id}
+                    title={election.title}
+                  />
                 </div>
               </li>
             ))}

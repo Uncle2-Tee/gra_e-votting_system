@@ -21,6 +21,7 @@ import type {
   CandidateReviewState,
   PendingCandidate,
 } from "@/lib/candidate-types";
+import { getElectionDisplayTitle } from "@/lib/election-display-title";
 import { getPositionColors } from "@/lib/position-colors";
 
 const initialState: CandidateReviewState = { error: null, success: null };
@@ -175,7 +176,7 @@ function ApprovedCandidateCard({ application }: { application: PendingCandidate 
 
   return (
     <article
-      className="flex h-fit w-full min-w-0 max-w-full items-start gap-3 rounded-xl border border-l-4 p-3.5 shadow-sm shadow-slate-950/[0.04] transition-colors hover:shadow-md sm:w-fit sm:max-w-xl"
+      className="flex h-fit w-full min-w-0 items-start gap-3 rounded-xl border border-l-4 p-3.5 shadow-sm shadow-slate-950/[0.04] transition-colors hover:shadow-md"
       style={{ ...positionColors.surface, borderLeftColor: positionColors.accentColor }}
     >
       {application.photoUrl ? (
@@ -195,7 +196,7 @@ function ApprovedCandidateCard({ application }: { application: PendingCandidate 
           {application.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}
         </span>
       )}
-      <div className="min-w-0 max-w-full">
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="break-words text-sm font-semibold text-slate-900">
             {application.name}
@@ -210,7 +211,9 @@ function ApprovedCandidateCard({ application }: { application: PendingCandidate 
             {application.positionTitle}
           </span>
           <span className="font-normal text-slate-400">·</span>
-          <span className="font-normal text-slate-600">{application.electionTitle}</span>
+          <span className="font-normal text-slate-600">
+            {getElectionDisplayTitle(application.electionTitle)}
+          </span>
         </p>
         <div className="mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1">
           {application.email ? (
@@ -323,7 +326,7 @@ export default function AdminCandidateReview({
         </div>
 
         {approvedApplications.length > 0 ? (
-          <div className="mt-4 flex min-w-0 flex-wrap items-start gap-3">
+          <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {approvedApplications.map((application) => (
               <ApprovedCandidateCard key={application.id} application={application} />
             ))}

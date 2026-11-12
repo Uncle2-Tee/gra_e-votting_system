@@ -72,6 +72,11 @@ export async function getVoterPortalData(
                 startsAt: true,
                 endsAt: true,
                 timezone: true,
+                candidates: {
+                  where: { status: "APPROVED" },
+                  take: 1,
+                  select: { id: true },
+                },
               },
             })
           : Promise.resolve([]),
@@ -88,7 +93,10 @@ export async function getVoterPortalData(
           : Promise.resolve([]),
         section !== "candidate-application"
           ? prisma.candidate.findMany({
-              where: { status: "APPROVED" },
+              where: {
+                status: "APPROVED",
+                election: { is: { status: { not: "ARCHIVED" } } },
+              },
               orderBy: [
                 { election: { startsAt: "asc" } },
                 { position: { displayOrder: "asc" } },
@@ -106,12 +114,18 @@ export async function getVoterPortalData(
             })
           : Promise.resolve([]),
         section === "overview"
-          ? prisma.candidate.count({ where: { status: "APPROVED" } })
+          ? prisma.candidate.count({
+              where: {
+                status: "APPROVED",
+                election: { is: { status: { not: "ARCHIVED" } } },
+              },
+            })
           : Promise.resolve(undefined),
       ]);
 
       return {
         databaseStatus: "connected",
+        ballotingEnabled: process.env.BALLOTING_ENABLED === "true",
         elections: elections.flatMap((election) => {
           if (!election.startsAt || !election.endsAt) {
             return [];
@@ -133,6 +147,7 @@ export async function getVoterPortalData(
               startsAt: election.startsAt.toISOString(),
               endsAt: election.endsAt.toISOString(),
               timezone: election.timezone,
+              hasApprovedCandidates: election.candidates.length > 0,
             },
           ];
         }),
@@ -166,6 +181,7 @@ export async function getVoterPortalData(
       logCandidateDataError("voter portal", error, attempt + 1);
       return {
         databaseStatus: "unavailable",
+        ballotingEnabled: process.env.BALLOTING_ENABLED === "true",
         elections: [],
         approvedCandidatesCount: 0,
         positions: [],
