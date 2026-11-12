@@ -49,9 +49,9 @@ function isRetryableDatabaseConnectionFailure(error: unknown) {
     error instanceof Prisma.PrismaClientKnownRequestError
       ? error.code
       : error instanceof Prisma.PrismaClientInitializationError
-        ? error.errorCode
+        ? error.message.match(/\bP\d{4}\b/)?.[0] ?? error.errorCode
         : undefined;
-  return ["P1001", "P1002", "P1008", "P1017", "P2024"].includes(errorCode ?? "");
+  return ["P1002", "P1008", "P1017", "P2024"].includes(errorCode ?? "");
 }
 
 function logAdminSessionDatabaseFailure(error: unknown) {

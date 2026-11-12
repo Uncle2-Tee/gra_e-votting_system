@@ -8,16 +8,16 @@ import {
   isAdminDatabaseUnavailableError,
 } from "@/lib/admin-security";
 import { prisma } from "@/lib/prisma";
-import type { NominationReviewState } from "@/lib/nomination-types";
+import type { CandidateReviewState } from "@/lib/candidate-types";
 
-const INITIAL_STATE: NominationReviewState = { error: null, success: null };
+const INITIAL_STATE: CandidateReviewState = { error: null, success: null };
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function reviewNomination(
-  _previousState: NominationReviewState,
+export async function reviewCandidate(
+  _previousState: CandidateReviewState,
   formData: FormData,
-): Promise<NominationReviewState> {
+): Promise<CandidateReviewState> {
   let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
   try {
     admin = await getCurrentAdmin();
@@ -27,14 +27,14 @@ export async function reviewNomination(
     }
     return {
       ...INITIAL_STATE,
-      error: "Nomination review is temporarily unavailable because the database cannot be reached.",
+      error: "Candidate review is temporarily unavailable because the database cannot be reached.",
     };
   }
   if (!admin) {
     return { ...INITIAL_STATE, error: "Your administrator session has expired. Sign in again." };
   }
   if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
-    return { ...INITIAL_STATE, error: "You are not authorized to review nominations." };
+    return { ...INITIAL_STATE, error: "You are not authorized to review candidates." };
   }
 
   const candidateId = formData.get("candidateId");
@@ -91,7 +91,7 @@ export async function reviewNomination(
         SELECT
           ${auditId}::uuid,
           ${admin.id}::uuid,
-          ${decision === "APPROVED" ? "CANDIDATE_NOMINATION_APPROVED" : "CANDIDATE_NOMINATION_REJECTED"},
+          ${decision === "APPROVED" ? "CANDIDATE_APPLICATION_APPROVED" : "CANDIDATE_APPLICATION_REJECTED"},
           'CANDIDATE',
           "id"::text,
           ${decision}
@@ -125,26 +125,26 @@ export async function reviewNomination(
       };
     }
     if (result !== "reviewed") {
-      throw new Error("The nomination review query returned no result.");
+      throw new Error("The candidate review query returned no result.");
     }
 
     revalidatePath("/admin");
     revalidatePath("/admin", "layout");
-    revalidatePath("/admin/nominations");
+    revalidatePath("/admin/candidates");
     revalidatePath("/vote/access");
-    revalidatePath("/vote/nominees");
+    revalidatePath("/vote/candidates");
     return {
       error: null,
       success: decision === "APPROVED"
-        ? "Nomination approved. The profile is now eligible for display."
-        : "Nomination rejected. The decision has been recorded.",
+        ? "Candidate approved. The profile is now eligible for display."
+        : "Candidate rejected. The decision has been recorded.",
     };
   } catch (error) {
     const errorCode =
       error instanceof Prisma.PrismaClientKnownRequestError
         ? error.code
         : "UNKNOWN";
-    console.error("Candidate nomination review failed.", {
+    console.error("Candidate application review failed.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
       errorCode,
     });
@@ -155,10 +155,10 @@ export async function reviewNomination(
   }
 }
 
-export async function removeApprovedNomination(
-  _previousState: NominationReviewState,
+export async function removeApprovedCandidate(
+  _previousState: CandidateReviewState,
   formData: FormData,
-): Promise<NominationReviewState> {
+): Promise<CandidateReviewState> {
   let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
   try {
     admin = await getCurrentAdmin();
@@ -168,14 +168,14 @@ export async function removeApprovedNomination(
     }
     return {
       ...INITIAL_STATE,
-      error: "Nominees cannot be removed right now because the database is unavailable.",
+      error: "Candidates cannot be removed right now because the database is unavailable.",
     };
   }
   if (!admin) {
     return { ...INITIAL_STATE, error: "Your administrator session has expired. Sign in again." };
   }
   if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
-    return { ...INITIAL_STATE, error: "You are not authorized to remove approved nominees." };
+    return { ...INITIAL_STATE, error: "You are not authorized to remove approved candidates." };
   }
 
   const candidateId = formData.get("candidateId");
@@ -201,7 +201,7 @@ export async function removeApprovedNomination(
           "status" = 'INACTIVE'::"CandidateStatus",
           "reviewedById" = ${admin.id}::uuid,
           "reviewedAt" = CURRENT_TIMESTAMP,
-          "reviewNote" = 'Removed from approved nominees by administrator',
+          "reviewNote" = 'Removed from approved candidates by administrator',
           "updatedAt" = CURRENT_TIMESTAMP
         FROM approved_candidate
         WHERE candidate."id" = approved_candidate."id"
@@ -220,7 +220,7 @@ export async function removeApprovedNomination(
         SELECT
           ${auditId}::uuid,
           ${admin.id}::uuid,
-          'CANDIDATE_NOMINATION_REMOVED',
+          'CANDIDATE_APPLICATION_REMOVED',
           'CANDIDATE',
           "id"::text,
           'INACTIVE'
@@ -237,35 +237,35 @@ export async function removeApprovedNomination(
     if (result === "not-approved") {
       return {
         ...INITIAL_STATE,
-        error: "This nominee is no longer approved. Refresh the page and try again.",
+        error: "This candidate is no longer approved. Refresh the page and try again.",
       };
     }
     if (result !== "removed") {
-      throw new Error("The nominee removal query returned no result.");
+      throw new Error("The candidate removal query returned no result.");
     }
 
     revalidatePath("/admin");
     revalidatePath("/admin", "layout");
-    revalidatePath("/admin/nominations");
+    revalidatePath("/admin/candidates");
     revalidatePath("/vote/access");
-    revalidatePath("/vote/nominees");
+    revalidatePath("/vote/candidates");
     revalidatePath("/vote/results");
     return {
       error: null,
-      success: "Nominee removed from voter-facing lists. Historical results are preserved.",
+      success: "Candidate removed from voter-facing lists. Historical results are preserved.",
     };
   } catch (error) {
     const errorCode =
       error instanceof Prisma.PrismaClientKnownRequestError
         ? error.code
         : "UNKNOWN";
-    console.error("Approved nominee removal failed.", {
+    console.error("Approved candidate removal failed.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
       errorCode,
     });
     return {
       ...INITIAL_STATE,
-      error: "The nominee could not be removed. Refresh the page and try again.",
+      error: "The candidate could not be removed. Refresh the page and try again.",
     };
   }
 }

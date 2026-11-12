@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import VotersPortal from "@/components/voters_portal";
+import VotersPortal, { VoterPortalLoading } from "@/components/voters_portal";
 import PageLoading from "@/components/page-loading";
-import { getVoterPortalData, getVoterResultsData } from "@/lib/nomination-data";
-import type { VoterResultsData } from "@/lib/nomination-types";
+import { getVoterPortalData, getVoterResultsData } from "@/lib/candidate-data";
+import type { VoterResultsData } from "@/lib/candidate-types";
 
-type PortalSection = "overview" | "nominees" | "nominate" | "results";
+type PortalSection = "overview" | "candidates" | "candidate-application" | "results";
 
 async function VoterPortalContent({ section }: { section: PortalSection }) {
   const [data, results] = await Promise.all([
@@ -20,7 +20,15 @@ export default function VoterPortalPage({
   section: PortalSection;
 }) {
   return (
-    <Suspense fallback={<PageLoading />}>
+    <Suspense
+      fallback={
+        section === "overview" || section === "candidates" ? (
+          <VoterPortalLoading section={section} />
+        ) : (
+          <PageLoading />
+        )
+      }
+    >
       <VoterPortalContent section={section} />
     </Suspense>
   );

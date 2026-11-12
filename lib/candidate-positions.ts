@@ -1,4 +1,4 @@
-export const NOMINATION_POSITION_OPTIONS = [
+export const CANDIDATE_POSITION_OPTIONS = [
   "President",
   "Vice President",
   "Secretary",

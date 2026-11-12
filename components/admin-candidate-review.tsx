@@ -14,15 +14,15 @@ import {
   X,
 } from "lucide-react";
 import {
-  removeApprovedNomination,
-  reviewNomination,
-} from "@/app/admin/nominations/actions";
+  removeApprovedCandidate,
+  reviewCandidate,
+} from "@/app/admin/candidates/actions";
 import type {
-  NominationReviewState,
-  PendingNomination,
-} from "@/lib/nomination-types";
+  CandidateReviewState,
+  PendingCandidate,
+} from "@/lib/candidate-types";
 
-const initialState: NominationReviewState = { error: null, success: null };
+const initialState: CandidateReviewState = { error: null, success: null };
 
 function formatSubmittedAt(value: string) {
   return `${new Intl.DateTimeFormat("en", {
@@ -32,8 +32,8 @@ function formatSubmittedAt(value: string) {
   }).format(new Date(value))} UTC`;
 }
 
-function NominationCard({ application }: { application: PendingNomination }) {
-  const [state, action, pending] = useActionState(reviewNomination, initialState);
+function CandidateCard({ application }: { application: PendingCandidate }) {
+  const [state, action, pending] = useActionState(reviewCandidate, initialState);
 
   return (
     <article className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-950/[0.06]">
@@ -158,9 +158,9 @@ function NominationCard({ application }: { application: PendingNomination }) {
   );
 }
 
-function ApprovedNominationCard({ application }: { application: PendingNomination }) {
+function ApprovedCandidateCard({ application }: { application: PendingCandidate }) {
   const [state, action, pending] = useActionState(
-    removeApprovedNomination,
+    removeApprovedCandidate,
     initialState,
   );
 
@@ -222,12 +222,12 @@ function ApprovedNominationCard({ application }: { application: PendingNominatio
           ) : null}
           <button
             type="submit"
-            aria-label={`Remove ${application.name} from approved nominees`}
+            aria-label={`Remove ${application.name} from approved candidates`}
             disabled={pending}
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-2.5 text-[10px] font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60"
           >
             <X className="size-3" />
-            {pending ? "Removing…" : "Remove nominee"}
+            {pending ? "Removing…" : "Remove candidate"}
           </button>
         </form>
       </div>
@@ -235,31 +235,31 @@ function ApprovedNominationCard({ application }: { application: PendingNominatio
   );
 }
 
-export default function AdminNominationReview({
+export default function AdminCandidateReview({
   applications,
   approvedApplications,
   error,
 }: {
-  applications: PendingNomination[];
-  approvedApplications: PendingNomination[];
+  applications: PendingCandidate[];
+  approvedApplications: PendingCandidate[];
   error: string | null;
 }) {
   return (
-    <section id="nominations" className="mt-8 scroll-mt-24">
+    <section id="candidates" className="mt-8 scroll-mt-24">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-700 uppercase">
             Candidate management
           </p>
           <h2 className="mt-1.5 text-lg font-semibold tracking-tight text-slate-950">
-            Nomination review
+            Candidate review
             <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 align-middle text-[10px] font-semibold text-amber-800">
               {applications.length} pending
             </span>
           </h2>
           <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
-            Verify each applicant’s identity and eligibility before approving a
-            nominee for voter-facing display.
+            Verify each applicant’s identity and eligibility before approving
+            candidates for voter-facing display.
           </p>
         </div>
       </div>
@@ -271,7 +271,7 @@ export default function AdminNominationReview({
       ) : applications.length > 0 ? (
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           {applications.map((application) => (
-            <NominationCard key={application.id} application={application} />
+            <CandidateCard key={application.id} application={application} />
           ))}
         </div>
       ) : (
@@ -280,7 +280,7 @@ export default function AdminNominationReview({
             <Check className="size-5" />
           </span>
           <h3 className="mt-3 text-xs font-semibold text-slate-800">
-            No nominations are waiting for review
+            No candidate applications are waiting for review
           </h3>
           <p className="mt-1.5 text-[11px] text-slate-500">
             New applications submitted from the voter portal will appear here.
@@ -291,10 +291,10 @@ export default function AdminNominationReview({
       <section className="mt-10 border-t border-slate-200 pt-7">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-700 uppercase">
-            Nominee records
+            Candidate records
           </p>
           <h2 className="mt-1.5 text-lg font-semibold tracking-tight text-slate-950">
-            Approved nominees
+            Approved candidates
             <span className="ml-2 rounded-full bg-emerald-50 px-2 py-1 align-middle text-[10px] font-semibold text-emerald-800">
               {approvedApplications.length} approved
             </span>
@@ -307,7 +307,7 @@ export default function AdminNominationReview({
         {approvedApplications.length > 0 ? (
           <div className="mt-4 flex min-w-0 flex-wrap items-start gap-3">
             {approvedApplications.map((application) => (
-              <ApprovedNominationCard key={application.id} application={application} />
+              <ApprovedCandidateCard key={application.id} application={application} />
             ))}
           </div>
         ) : (

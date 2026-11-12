@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
 
-const electionTitle = "[TEST DATA] GRA E-Voting Nomination Demo";
+const electionTitle = "[TEST DATA] GRA E-Voting Candidate Demo";
 const timezone = "Africa/Accra";
 
 function getTestDatabaseUrl() {
@@ -51,7 +51,7 @@ try {
       ? await transaction.election.update({
           where: { id: existing.id },
           data: {
-            description: "Test-only election for trying the public nomination form. Safe to remove with npm run db:delete:test.",
+            description: "Test-only election for trying the public candidate form. Safe to remove with npm run db:delete:test.",
             status: "SCHEDULED",
             startsAt,
             endsAt,
@@ -62,7 +62,7 @@ try {
       : await transaction.election.create({
           data: {
             title: electionTitle,
-            description: "Test-only election for trying the public nomination form. Safe to remove with npm run db:delete:test.",
+            description: "Test-only election for trying the public candidate form. Safe to remove with npm run db:delete:test.",
             status: "SCHEDULED",
             startsAt,
             endsAt,
@@ -75,17 +75,17 @@ try {
     const positionExamples = [
       {
         title: "President",
-        description: "Test nomination for the President position.",
+        description: "Test candidate for the President position.",
         displayOrder: 1,
       },
       {
         title: "Vice President",
-        description: "Test nomination for the Vice President position.",
+        description: "Test candidate for the Vice President position.",
         displayOrder: 2,
       },
       {
         title: "Secretary",
-        description: "Test nomination for the Secretary position.",
+        description: "Test candidate for the Secretary position.",
         displayOrder: 3,
       },
     ];
@@ -111,9 +111,9 @@ try {
   });
 
   console.log(`Created or refreshed "${electionTitle}" (${election.id}).`);
-  console.log(`Nomination options: President, Vice President, Secretary.`);
+  console.log(`Candidate options: President, Vice President, Secretary.`);
   console.log(`Voting opens in 30 days and closes in 37 days (${timezone}).`);
-  console.log("Open /vote/nominate to test. Remove this election with npm run db:delete:test.");
+  console.log("Open /vote/candidate-application to test. Remove this election with npm run db:delete:test.");
 } finally {
   await prisma.$disconnect();
 }

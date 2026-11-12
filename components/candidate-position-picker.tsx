@@ -5,10 +5,10 @@ import { Plus, Trash2 } from "lucide-react";
 import {
   MAX_ELECTION_POSITIONS,
   MAX_POSITION_TITLE_LENGTH,
-  NOMINATION_POSITION_OPTIONS,
-} from "@/lib/nomination-positions";
+  CANDIDATE_POSITION_OPTIONS,
+} from "@/lib/candidate-positions";
 
-export default function NominationPositionPicker({
+export default function CandidatePositionPicker({
   id,
   positions,
   onChange,
@@ -30,7 +30,7 @@ export default function NominationPositionPicker({
       position.toLocaleLowerCase("en"),
     ),
   );
-  const availablePositions = NOMINATION_POSITION_OPTIONS.filter(
+  const availablePositions = CANDIDATE_POSITION_OPTIONS.filter(
     (position) => !selectedNames.has(position.toLocaleLowerCase("en")),
   );
 
@@ -64,7 +64,7 @@ export default function NominationPositionPicker({
       {availablePositions.length > 0 && positions.length < positionLimit ? (
         <select
           id={`position-select-${id}`}
-          aria-label="Select a standard nomination position"
+          aria-label="Select a standard position"
           aria-describedby={id === "create-election" ? "voting-positions-help" : undefined}
           className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
           value=""
@@ -88,7 +88,7 @@ export default function NominationPositionPicker({
         <div className="flex min-w-0 items-center gap-2">
           <input
             id={`custom-position-${id}`}
-            aria-label="New nomination position name"
+            aria-label="New position name"
             aria-describedby={id === "create-election" ? "voting-positions-help" : undefined}
             required={positions.length === 0}
             className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"

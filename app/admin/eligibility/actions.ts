@@ -83,13 +83,46 @@ export async function importEligibleVoters(
         SELECT pg_advisory_xact_lock(604218731)::text AS lock_result
       `;
 
-      const existingVoters = await transaction.voter.findMany({
-        select: {
-          id: true,
-          identificationLookupHash: true,
-          phoneLookupHash: true,
-        },
-      });
+      const lookupHashBatches = chunks(
+        [...new Set(rows.flatMap((row) => row.voter ? [row.voter.lookupHash] : []))],
+        CHUNK_SIZE,
+      );
+      const phoneHashBatches = chunks(
+        [...new Set(rows.flatMap((row) => row.voter ? [row.voter.phoneLookupHash] : []))],
+        CHUNK_SIZE,
+      );
+      const existingVotersById = new Map<
+        string,
+        { id: string; identificationLookupHash: string; phoneLookupHash: string | null }
+      >();
+      const lookupBatchCount = Math.max(
+        lookupHashBatches.length,
+        phoneHashBatches.length,
+      );
+      for (let batchIndex = 0; batchIndex < lookupBatchCount; batchIndex += 1) {
+        const filters: Prisma.VoterWhereInput[] = [];
+        const lookupHashes = lookupHashBatches[batchIndex];
+        const phoneHashes = phoneHashBatches[batchIndex];
+        if (lookupHashes?.length) {
+          filters.push({ identificationLookupHash: { in: lookupHashes } });
+        }
+        if (phoneHashes?.length) {
+          filters.push({ phoneLookupHash: { in: phoneHashes } });
+        }
+
+        const existingBatch = await transaction.voter.findMany({
+          where: { OR: filters },
+          select: {
+            id: true,
+            identificationLookupHash: true,
+            phoneLookupHash: true,
+          },
+        });
+        for (const voter of existingBatch) {
+          existingVotersById.set(voter.id, voter);
+        }
+      }
+      const existingVoters = [...existingVotersById.values()];
       const voterIdsByNameHash = new Map<string, string[]>();
       const existingVotersByNameHash = new Map<
         string,

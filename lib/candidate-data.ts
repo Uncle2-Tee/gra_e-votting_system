@@ -8,13 +8,12 @@ import {
 import { getEffectiveElectionStatus } from "@/lib/election-schedule";
 import { prisma } from "@/lib/prisma";
 import type {
-  PendingNominationData,
+  PendingCandidateData,
   VoterResultsData,
   VoterPortalData,
-} from "@/lib/nomination-types";
+} from "@/lib/candidate-types";
 
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
-  "P1001",
   "P1002",
   "P1008",
   "P1017",
@@ -42,9 +41,7 @@ function getDatabaseErrorCode(error: unknown) {
 }
 
 function isRetryableDatabaseError(error: unknown) {
-  if (error instanceof Prisma.PrismaClientInitializationError) {
-    return true;
-  }
+  // P1001 means the database host is unreachable; repeating every query only multiplies the wait.
   return RETRYABLE_DATABASE_ERROR_CODES.has(getDatabaseErrorCode(error));
 }
 
@@ -53,13 +50,13 @@ function delay(milliseconds: number) {
 }
 
 export async function getVoterPortalData(
-  section: "overview" | "nominate" | "nominees",
+  section: "overview" | "candidate-application" | "candidates",
 ): Promise<VoterPortalData> {
   await connection();
 
   for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
     try {
-      const [elections, positions, candidates, approvedNomineesCount] = await Promise.all([
+      const [elections, positions, candidates, approvedCandidatesCount] = await Promise.all([
         section === "overview"
           ? prisma.election.findMany({
               where: {
@@ -78,7 +75,7 @@ export async function getVoterPortalData(
               },
             })
           : Promise.resolve([]),
-        section !== "nominees"
+        section !== "candidates"
           ? prisma.position.findMany({
               where: { election: { status: { not: "ARCHIVED" } } },
               orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
@@ -89,7 +86,7 @@ export async function getVoterPortalData(
               },
             })
           : Promise.resolve([]),
-        section !== "nominate"
+        section !== "candidate-application"
           ? prisma.candidate.findMany({
               where: { status: "APPROVED" },
               orderBy: [
@@ -139,13 +136,13 @@ export async function getVoterPortalData(
             },
           ];
         }),
-        approvedNomineesCount: approvedNomineesCount ?? candidates.length,
+        approvedCandidatesCount: approvedCandidatesCount ?? candidates.length,
         positions: positions.map((position) => ({
           id: position.id,
           title: position.title,
           electionTitle: position.election.title,
         })),
-        nominees: candidates.map((candidate) => ({
+        candidates: candidates.map((candidate) => ({
           id: candidate.id,
           name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
           biography: candidate.biography,
@@ -166,13 +163,13 @@ export async function getVoterPortalData(
         continue;
       }
 
-      logNominationDataError("voter portal", error, attempt + 1);
+      logCandidateDataError("voter portal", error, attempt + 1);
       return {
         databaseStatus: "unavailable",
         elections: [],
-        approvedNomineesCount: 0,
+        approvedCandidatesCount: 0,
         positions: [],
-        nominees: [],
+        candidates: [],
       };
     }
   }
@@ -180,65 +177,93 @@ export async function getVoterPortalData(
   throw new Error("Voter portal data retries ended unexpectedly.");
 }
 
-export async function getVoterResultsData(): Promise<VoterResultsData> {
-  await connection();
+function queryVoterResults() {
+  const resultElectionStatuses: ElectionStatus[] = [
+    "SCHEDULED",
+    "PUBLISHED",
+    "OPEN",
+    "CLOSED",
+    "RESULTS_PUBLISHED",
+    "ARCHIVED",
+  ];
+  const resultsElectionFilter = {
+    election: {
+      is: { status: { in: resultElectionStatuses } },
+    },
+  } satisfies Prisma.BallotWhereInput & Prisma.BallotSelectionWhereInput;
 
-  try {
-    const resultElectionStatuses: ElectionStatus[] = [
-      "SCHEDULED",
-      "PUBLISHED",
-      "OPEN",
-      "CLOSED",
-      "RESULTS_PUBLISHED",
-      "ARCHIVED",
-    ];
-    const resultsElectionFilter = {
-      election: {
-        is: { status: { in: resultElectionStatuses } },
+  return Promise.all([
+    prisma.election.findMany({
+      where: {
+        status: { in: resultElectionStatuses },
       },
-    } satisfies Prisma.BallotWhereInput & Prisma.BallotSelectionWhereInput;
-    const [elections, ballotCounts, selectionCounts] = await Promise.all([
-      prisma.election.findMany({
-        where: {
-          status: { in: resultElectionStatuses },
-        },
-        orderBy: [{ endsAt: "desc" }, { updatedAt: "desc" }],
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          timezone: true,
-          resultsPublishedAt: true,
-          startsAt: true,
-          endsAt: true,
-          positions: {
-            orderBy: { displayOrder: "asc" },
-            select: {
-              id: true,
-              title: true,
-              candidates: {
-                where: { status: { in: ["APPROVED", "INACTIVE"] } },
-                select: {
-                  id: true,
-                  nameCiphertext: true,
-                  photoMimeType: true,
-                },
+      orderBy: [{ endsAt: "desc" }, { updatedAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        timezone: true,
+        resultsPublishedAt: true,
+        startsAt: true,
+        endsAt: true,
+        positions: {
+          orderBy: { displayOrder: "asc" },
+          select: {
+            id: true,
+            title: true,
+            candidates: {
+              where: { status: { in: ["APPROVED", "INACTIVE"] } },
+              select: {
+                id: true,
+                nameCiphertext: true,
+                status: true,
+                photoMimeType: true,
               },
             },
           },
         },
-      }),
-      prisma.ballot.groupBy({
-        by: ["electionId"],
-        where: resultsElectionFilter,
-        _count: { _all: true },
-      }),
-      prisma.ballotSelection.groupBy({
-        by: ["electionId", "positionId", "candidateId"],
-        where: resultsElectionFilter,
-        _count: { _all: true },
-      }),
-    ]);
+      },
+    }),
+    prisma.ballot.groupBy({
+      by: ["electionId"],
+      where: resultsElectionFilter,
+      _count: { _all: true },
+    }),
+    prisma.ballotSelection.groupBy({
+      by: ["electionId", "positionId", "candidateId"],
+      where: resultsElectionFilter,
+      _count: { _all: true },
+    }),
+  ]);
+}
+
+export async function getVoterResultsData(): Promise<VoterResultsData> {
+  await connection();
+
+  let attempts = 0;
+  try {
+    let queryResult: Awaited<ReturnType<typeof queryVoterResults>> | undefined;
+    for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
+      attempts = attempt + 1;
+      try {
+        queryResult = await queryVoterResults();
+        break;
+      } catch (error) {
+        if (
+          attempt === MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 ||
+          !isRetryableDatabaseError(error)
+        ) {
+          throw error;
+        }
+        await delay(300 * (attempt + 1));
+      }
+    }
+
+    if (!queryResult) {
+      throw new Error("Voter results data retries ended unexpectedly.");
+    }
+
+    const [elections, ballotCounts, selectionCounts] = queryResult;
 
     const ballotsByElection = new Map(
       ballotCounts.map(({ electionId, _count }) => [electionId, _count._all]),
@@ -279,6 +304,7 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
                 votes:
                   votesByCandidate.get(`${election.id}:${position.id}:${candidate.id}`) ?? 0,
                 photoUrl:
+                  candidate.status === "APPROVED" &&
                   candidate.photoMimeType === "image/webp"
                     ? `/admin/candidates/${candidate.id}/photo`
                     : null,
@@ -298,12 +324,12 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
       }),
     };
   } catch (error) {
-    logNominationDataError("published voter results", error);
+    logCandidateDataError("published voter results", error, attempts);
     return { databaseStatus: "unavailable", elections: [] };
   }
 }
 
-export async function getPendingNominationData(): Promise<PendingNominationData> {
+export async function getPendingCandidateData(): Promise<PendingCandidateData> {
   await connection();
 
   for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
@@ -342,8 +368,8 @@ export async function getPendingNominationData(): Promise<PendingNominationData>
       ]);
 
       return {
-        applications: applications.map(mapAdminNomination),
-        approvedApplications: approvedApplications.map(mapAdminNomination),
+        applications: applications.map(mapAdminCandidate),
+        approvedApplications: approvedApplications.map(mapAdminCandidate),
         error: null,
       };
     } catch (error) {
@@ -355,19 +381,19 @@ export async function getPendingNominationData(): Promise<PendingNominationData>
         continue;
       }
 
-      logNominationDataError("administrator nomination queue", error, attempt + 1);
+      logCandidateDataError("administrator candidate queue", error, attempt + 1);
       return {
         applications: [],
         approvedApplications: [],
-        error: "Nomination applications could not be loaded from the database.",
+        error: "Candidate applications could not be loaded from the database.",
       };
     }
   }
 
-  throw new Error("Administrator nomination queue retries ended unexpectedly.");
+  throw new Error("Administrator candidate queue retries ended unexpectedly.");
 }
 
-function mapAdminNomination(application: {
+function mapAdminCandidate(application: {
   id: string;
   nameCiphertext: string;
   applicantEmailCiphertext: string | null;
@@ -398,10 +424,10 @@ function mapAdminNomination(application: {
   };
 }
 
-function logNominationDataError(scope: string, error: unknown, attempts = 1) {
+function logCandidateDataError(scope: string, error: unknown, attempts = 1) {
   const errorCode = getDatabaseErrorCode(error);
   const errorName = error instanceof Error ? error.name : "UnknownError";
   console.error(
-    `Could not load ${scope} nomination data. errorName=${errorName} errorCode=${errorCode} attempts=${attempts}`,
+    `Could not load ${scope} candidate data. errorName=${errorName} errorCode=${errorCode} attempts=${attempts}`,
   );
 }

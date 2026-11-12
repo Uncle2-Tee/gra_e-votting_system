@@ -17,8 +17,8 @@ import NavigationLinkStatus from "@/components/navigation-link-status";
 
 const navigation = [
   { section: "overview", label: "Overview", href: "/vote/overview", icon: LayoutDashboard },
-  { section: "nominate", label: "Nomination form", href: "/vote/nominate", icon: FilePlus2 },
-  { section: "nominees", label: "Approved nominees", href: "/vote/nominees", icon: BadgeCheck },
+  { section: "candidate-application", label: "Candidate application", href: "/vote/candidate-application", icon: FilePlus2 },
+  { section: "candidates", label: "Approved candidates", href: "/vote/candidates", icon: BadgeCheck },
   { section: "ballot", label: "Vote", href: "/vote/access", icon: Vote },
   { section: "results", label: "Results", href: "/vote/results", icon: ChartNoAxesCombined },
 ] as const;

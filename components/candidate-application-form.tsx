@@ -3,13 +3,13 @@
 import Image from "next/image";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ArrowRight, FilePlus2, ImagePlus, ShieldCheck, Trash2 } from "lucide-react";
-import { submitNominationApplication } from "@/app/vote/actions";
+import { submitCandidateApplication } from "@/app/vote/actions";
 import type {
-  NominationApplicationState,
-  NominationPositionOption,
-} from "@/lib/nomination-types";
+  CandidateApplicationState,
+  CandidatePositionOption,
+} from "@/lib/candidate-types";
 
-const initialState: NominationApplicationState = { error: null, success: false };
+const initialState: CandidateApplicationState = { error: null, success: false };
 const MAX_PROFILE_PHOTO_SIZE = 2 * 1024 * 1024;
 const PROFILE_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -70,7 +70,7 @@ function ProfilePhotoUpload({ disabled }: { disabled: boolean }) {
   return (
     <div className="mt-4">
       <label
-        htmlFor="nomination-profile-photo"
+        htmlFor="candidate-profile-photo"
         className={`block rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-4 transition ${
           disabled
             ? "cursor-not-allowed opacity-60"
@@ -79,7 +79,7 @@ function ProfilePhotoUpload({ disabled }: { disabled: boolean }) {
       >
         <input
           ref={inputRef}
-          id="nomination-profile-photo"
+          id="candidate-profile-photo"
           className="peer sr-only"
           type="file"
           name="photo"
@@ -149,15 +149,15 @@ function ProfilePhotoUpload({ disabled }: { disabled: boolean }) {
   );
 }
 
-export default function NominationApplicationForm({
+export default function CandidateApplicationForm({
   positions,
   unavailable,
 }: {
-  positions: NominationPositionOption[];
+  positions: CandidatePositionOption[];
   unavailable: boolean;
 }) {
   const [state, action, pending] = useActionState(
-    submitNominationApplication,
+    submitCandidateApplication,
     initialState,
   );
   const disabled = unavailable || positions.length === 0 || pending;
@@ -168,7 +168,7 @@ export default function NominationApplicationForm({
         action={action}
         aria-describedby={
           unavailable || positions.length === 0
-            ? "nomination-availability"
+            ? "candidate-availability"
             : undefined
         }
         className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-950/[0.03] sm:p-7"
@@ -179,20 +179,20 @@ export default function NominationApplicationForm({
           </span>
           <div>
             <h3 className="text-base font-semibold tracking-tight text-slate-950">
-              Start a nomination
+              Apply as a candidate
             </h3>
           </div>
         </div>
 
         {unavailable || positions.length === 0 ? (
           <p
-            id="nomination-availability"
+            id="candidate-availability"
             role="status"
             className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900"
           >
             {unavailable
               ? "Available positions are temporarily unavailable because election data could not be loaded."
-              : "Nominations are not available right now. Administrators can publish nomination positions for upcoming elections."}
+              : "Candidate applications are not available right now. Administrators can publish positions for upcoming elections."}
           </p>
         ) : null}
 
@@ -272,7 +272,7 @@ export default function NominationApplicationForm({
           />
           <span>
             I agree that election administrators may use these details to
-            contact me and review my nomination. If approved, I understand
+            contact me and review my candidate application. If approved, I understand
             that my name and profile photo (if provided) will be shown to voters.
           </span>
         </label>
@@ -292,8 +292,8 @@ export default function NominationApplicationForm({
             className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-xs leading-5 text-emerald-900"
             role="status"
           >
-            Your nomination has been received for review. It will not be shown
-            to voters unless an administrator approves it.
+            Your candidate application has been received for review. Your
+            profile will be shown to voters only if an administrator approves it.
           </p>
         ) : null}
         <button
@@ -317,7 +317,7 @@ export default function NominationApplicationForm({
           {[
             ["01", "Choose a form", "Select an available position for a scheduled election."],
             ["02", "Submit your details", "An administrator will review your contact details and eligibility."],
-            ["03", "Wait for approval", "Only approved nominee profiles are shown in the voter portal."],
+            ["03", "Wait for approval", "Only approved candidates are shown in the voter portal."],
           ].map(([number, title, description]) => (
             <li key={number} className="flex gap-3">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] font-semibold text-emerald-800 ring-1 ring-slate-200">

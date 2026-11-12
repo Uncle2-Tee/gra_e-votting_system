@@ -99,7 +99,7 @@ export function createVoterCredentialDigest(credential: string) {
     .digest("hex");
 }
 
-export function createNominationLookupHash(
+export function createCandidateApplicationLookupHash(
   name: string,
   email: string,
   phone: string,
@@ -109,6 +109,7 @@ export function createNominationLookupHash(
     email.trim().normalize("NFKC").toLocaleLowerCase("en"),
     normalizePhoneNumber(phone),
   ]);
+  // Keep this purpose stable so existing candidate application hashes still match.
   return createHmac("sha256", deriveKey("nomination-lookup"))
     .update(identity, "utf8")
     .digest("hex");

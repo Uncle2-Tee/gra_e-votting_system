@@ -12,9 +12,9 @@ import AdminElectionCreate from "@/components/admin-election-create";
 import AdminElectionDeleteButton from "@/components/admin-election-delete-button";
 import AdminElectionPositionManager from "@/components/admin-election-position-manager";
 import AdminElectionScheduleEditor from "@/components/admin-election-schedule-editor";
-import AdminNominationReview from "@/components/admin-nomination-review";
+import AdminCandidateReview from "@/components/admin-candidate-review";
 import type { AdminElectionSchedules, AdminOverview } from "@/lib/admin-overview";
-import type { PendingNominationData } from "@/lib/nomination-types";
+import type { PendingCandidateData } from "@/lib/candidate-types";
 
 function PageHeading({
   eyebrow,
@@ -154,18 +154,18 @@ export function AdminElectionsPage({
   );
 }
 
-export function AdminNominationsPage({
+export function AdminCandidatesPage({
   data,
 }: {
-  data: PendingNominationData;
+  data: PendingCandidateData;
 }) {
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
       <PageHeading
         eyebrow="Election operations"
-        title="Nomination review"
+        title="Candidate review"
       />
-      <AdminNominationReview
+      <AdminCandidateReview
         applications={data.applications}
         approvedApplications={data.approvedApplications}
         error={data.error}

@@ -26,7 +26,7 @@ const navigationGroups = [
   {
     label: "Election operations",
     items: [
-      { id: "nominations", label: "Nomination review", href: "/admin/nominations", icon: BadgeCheck },
+      { id: "candidates", label: "Candidate review", href: "/admin/candidates", icon: BadgeCheck },
       { id: "eligibility", label: "Eligibility & imports", href: "/admin/eligibility", icon: FileSpreadsheet },
       { id: "elections", label: "Voting setup", href: "/admin/elections", icon: Vote },
     ],
@@ -71,10 +71,10 @@ function AdminSignOutButton({ compact = false }: { compact?: boolean }) {
 
 export default function AdminDashboardShell({
   children,
-  pendingNominationBadge,
+  pendingCandidateBadge,
 }: {
   children: ReactNode;
-  pendingNominationBadge: ReactNode;
+  pendingCandidateBadge: ReactNode;
 }) {
   const pathname = usePathname();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
@@ -127,7 +127,7 @@ export default function AdminDashboardShell({
                       />
                       <span>{label}</span>
                       <NavigationLinkStatus />
-                      {id === "nominations" ? pendingNominationBadge : active ? (
+                      {id === "candidates" ? pendingCandidateBadge : active ? (
                         <span aria-hidden="true" className="ml-auto size-2 rounded-full bg-emerald-700 ring-2 ring-emerald-200" />
                       ) : null}
                     </Link>
@@ -192,7 +192,7 @@ export default function AdminDashboardShell({
                     <Icon className={`size-4 shrink-0 ${active ? "text-brand-navy" : "text-slate-400 group-hover:text-brand-blue group-focus-visible:text-brand-blue"}`} strokeWidth={1.8} />
                     <span className="min-w-0 truncate">{label}</span>
                     <NavigationLinkStatus />
-                    {id === "nominations" ? pendingNominationBadge : active ? (
+                    {id === "candidates" ? pendingCandidateBadge : active ? (
                       <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-blue ring-1 ring-brand-navy/20" />
                     ) : null}
                   </Link>

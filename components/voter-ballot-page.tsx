@@ -111,7 +111,7 @@ function PositionBallotCard({
                     alt=""
                     width={44}
                     height={44}
-                    unoptimized
+                    sizes="44px"
                     className="size-11 shrink-0 rounded-full border border-slate-200 object-cover"
                   />
                 ) : (

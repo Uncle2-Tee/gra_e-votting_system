@@ -11,7 +11,7 @@ import {
   ElectionWinnersPanel,
 } from "@/components/voters_portal";
 import PageLoading from "@/components/page-loading";
-import { getVoterResultsData } from "@/lib/nomination-data";
+import { getVoterResultsData } from "@/lib/candidate-data";
 
 async function AdminResults() {
   const results = await getVoterResultsData();

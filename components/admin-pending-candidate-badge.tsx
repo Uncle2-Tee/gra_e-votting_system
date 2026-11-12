@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-export default async function AdminPendingNominationBadge() {
+export default async function AdminPendingCandidateBadge() {
   let count: number | null;
   try {
     count = await prisma.candidate.count({
@@ -14,7 +14,7 @@ export default async function AdminPendingNominationBadge() {
       typeof error.code === "string"
         ? error.code
         : "UNKNOWN";
-    console.error("Pending nomination count could not be loaded.", {
+    console.error("Pending candidate count could not be loaded.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
       errorCode,
     });
@@ -27,8 +27,8 @@ export default async function AdminPendingNominationBadge() {
   if (count === null) {
     return (
       <span
-        aria-label="Pending nomination count unavailable"
-        title="Pending nomination count unavailable"
+        aria-label="Pending candidate count unavailable"
+        title="Pending candidate count unavailable"
         className="ml-auto inline-flex size-5 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-800"
       >
         —
@@ -38,7 +38,7 @@ export default async function AdminPendingNominationBadge() {
 
   return (
     <span
-      aria-label={`${count} pending nomination approvals`}
+      aria-label={`${count} pending candidate applications`}
       className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white"
     >
       {count > 99 ? "99+" : count}

@@ -8,8 +8,8 @@ import {
   type AddElectionPositionsState,
   type RemoveElectionPositionState,
 } from "@/app/admin/elections/actions";
-import NominationPositionPicker from "@/components/nomination-position-picker";
-import { MAX_ELECTION_POSITIONS } from "@/lib/nomination-positions";
+import CandidatePositionPicker from "@/components/candidate-position-picker";
+import { MAX_ELECTION_POSITIONS } from "@/lib/candidate-positions";
 
 const INITIAL_STATE: AddElectionPositionsState = { error: null, success: null };
 const INITIAL_REMOVE_STATE: RemoveElectionPositionState = { error: null, success: null };
@@ -39,7 +39,7 @@ function RemovePositionButton({
         aria-label={`Remove ${position.title} position`}
         title={`Remove ${position.title}`}
         onClick={(event) => {
-          if (!window.confirm(`Remove "${position.title}"? Any nomination applications for this position will also be deleted. Positions with recorded votes cannot be removed.`)) {
+          if (!window.confirm(`Remove "${position.title}"? Any candidate applications for this position will also be deleted. Positions with recorded votes cannot be removed.`)) {
             event.preventDefault();
           }
         }}
@@ -71,13 +71,13 @@ export default function AdminElectionPositionManager({
       <summary className="w-fit cursor-pointer list-none rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">
         <span className="inline-flex items-center gap-1.5">
           <ListPlus className="size-3.5" />
-          Manage positions on nomination form ({election.positions.length})
+          Manage positions for candidate applications ({election.positions.length})
         </span>
       </summary>
       <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
         <p className="text-[11px] font-semibold text-slate-700">Current positions</p>
         <p className="mt-1 text-[10px] leading-4 text-slate-500">
-          Delete a position here to remove it from the voter nomination form. Any applications for it will also be deleted.
+          Delete a position here to remove it from candidate applications. Any applications for it will also be deleted.
         </p>
         {election.positions.length > 0 ? (
           <ul className="mt-2 space-y-1.5">
@@ -104,7 +104,7 @@ export default function AdminElectionPositionManager({
             <label htmlFor={`custom-position-${election.id}`} className="text-[11px] font-semibold text-slate-700">
               Add positions
             </label>
-            <NominationPositionPicker
+            <CandidatePositionPicker
               id={election.id}
               positions={newPositions}
               onChange={setNewPositions}

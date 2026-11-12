@@ -5,7 +5,7 @@ const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
 
 const electionTitles = [
-  "[TEST DATA] GRA E-Voting Nomination Demo",
+  "[TEST DATA] GRA E-Voting Candidate Demo",
   "[TEST DATA] GRA E-Voting Ballot Demo",
 ];
 

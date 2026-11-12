@@ -11,11 +11,11 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import NominationApplicationForm from "@/components/nomination-application-form";
+import CandidateApplicationForm from "@/components/candidate-application-form";
 import ResultsAutoRefresh from "@/components/results-auto-refresh";
-import type { VoterPortalData, VoterResultsData } from "@/lib/nomination-types";
+import type { VoterPortalData, VoterResultsData } from "@/lib/candidate-types";
 
-type PortalSection = "overview" | "nominees" | "nominate" | "results";
+type PortalSection = "overview" | "candidates" | "candidate-application" | "results";
 
 function PageHeading({
   eyebrow,
@@ -43,18 +43,18 @@ function PageHeading({
   );
 }
 
-function NomineeCards({ data }: { data: VoterPortalData }) {
-  if (data.nominees.length === 0) {
+function CandidateCards({ data }: { data: VoterPortalData }) {
+  if (data.candidates.length === 0) {
     return (
       <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
         <span className="mx-auto flex size-11 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
           <UsersRound className="size-5" />
         </span>
         <h2 className="mt-3 text-sm font-semibold text-slate-800">
-          No approved nominees to display yet
+          No approved candidates to display yet
         </h2>
         <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500">
-          When an administrator approves a nomination, the nominee profile will
+          When an administrator approves a candidate, their profile will
           appear here.
         </p>
       </div>
@@ -63,26 +63,26 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
 
   return (
     <div className="mt-6 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {data.nominees.map((nominee) => (
+      {data.candidates.map((candidate) => (
         <article
-          key={nominee.id}
+          key={candidate.id}
           className="group relative min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-950/[0.06]"
         >
           <div className="h-1 bg-gradient-to-r from-emerald-700 via-teal-500 to-emerald-200" />
           <div className="p-5">
             <div className="flex min-w-0 items-center gap-4">
-              {nominee.photoUrl ? (
+              {candidate.photoUrl ? (
                 <Image
-                  src={nominee.photoUrl}
-                  alt={`${nominee.name} profile`}
+                  src={candidate.photoUrl}
+                  alt={`${candidate.name} profile`}
                   width={72}
                   height={72}
-                  unoptimized
+                  sizes="72px"
                   className="size-[72px] shrink-0 rounded-2xl object-cover ring-4 ring-emerald-50"
                 />
               ) : (
                 <span className="flex size-[72px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 text-lg font-bold text-emerald-900 ring-4 ring-emerald-50">
-                  {nominee.name
+                  {candidate.name
                     .split(/\s+/)
                     .slice(0, 2)
                     .map((part) => part.charAt(0).toUpperCase())
@@ -92,23 +92,23 @@ function NomineeCards({ data }: { data: VoterPortalData }) {
               <div className="min-w-0 flex-1">
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-semibold tracking-wide text-emerald-800 uppercase">
                   <BadgeCheck className="size-3" />
-                  Approved nominee
+                  Approved candidate
                 </span>
                 <h2 className="mt-2 break-words text-base font-semibold leading-5 tracking-tight text-slate-950">
-                  {nominee.name}
+                  {candidate.name}
                 </h2>
                 <p className="mt-1 break-words text-xs font-medium text-emerald-800">
-                  {nominee.positionTitle}
+                  {candidate.positionTitle}
                 </p>
               </div>
             </div>
-            {nominee.biography ? (
+            {candidate.biography ? (
               <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
                 <p className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 uppercase">
                   Candidate statement
                 </p>
                 <p className="mt-2 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
-                  {nominee.biography}
+                  {candidate.biography}
                 </p>
               </div>
             ) : (
@@ -205,7 +205,7 @@ export function ElectionWinnersPanel({ data }: { data: VoterResultsData }) {
                         alt={`${candidate.name} profile`}
                         width={48}
                         height={48}
-                        unoptimized
+                        sizes="48px"
                         className="size-12 shrink-0 rounded-full object-cover ring-2 ring-white/20"
                       />
                     ) : (
@@ -394,7 +394,7 @@ export function ElectionResultsPanel({
                                         alt={`${candidate.name} profile`}
                                         width={48}
                                         height={48}
-                                        unoptimized
+                                        sizes="48px"
                                         className="size-12 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
                                       />
                                     ) : (
@@ -469,45 +469,48 @@ export function ElectionResultsPanel({
   );
 }
 
+function OverviewHero() {
+  return (
+    <section className="relative overflow-hidden rounded-2xl border border-brand-navy/20 bg-gradient-to-br from-brand-navy via-emerald-900 to-brand-blue px-5 py-7 text-white shadow-lg shadow-brand-navy/10 sm:px-9 sm:py-10">
+      <div className="pointer-events-none absolute -right-14 -top-32 size-[340px] rounded-full border border-white/[0.08]" />
+      <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-brand-blue/[0.18] blur-3xl" />
+      <div className="relative max-w-2xl">
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-sky-100 uppercase">
+          <span className="size-1.5 rounded-full bg-brand-blue" />
+          Your voice shapes the future
+        </span>
+        <h1 className="mt-5 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
+          Welcome to your{" "}
+          <span className="text-sky-200">election dashboard.</span>
+        </h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-sky-50/80">
+          Review approved candidates or apply as a candidate for an available
+          position. Administrators review every application before publication.
+        </p>
+        <div className="mt-6 flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start sm:gap-3">
+          <Link
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-center text-[11px] font-semibold text-brand-navy transition hover:bg-sky-50 sm:gap-2 sm:px-4 sm:text-xs"
+            href="/vote/candidate-application"
+          >
+            <span>Apply as a candidate</span>
+            <ArrowRight className="size-3.5" />
+          </Link>
+          <Link
+            className="inline-flex h-10 min-w-0 items-center justify-center rounded-lg border border-white/25 bg-white/[0.06] px-3 text-center text-[11px] font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.12] sm:px-4 sm:text-xs"
+            href="/vote/candidates"
+          >
+            Browse candidates
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Overview({ data }: { data: VoterPortalData }) {
   return (
     <>
-      <section className="relative overflow-hidden rounded-2xl border border-brand-navy/20 bg-gradient-to-br from-brand-navy via-emerald-900 to-brand-blue px-5 py-7 text-white shadow-lg shadow-brand-navy/10 sm:px-9 sm:py-10">
-        <div className="pointer-events-none absolute -right-14 -top-32 size-[340px] rounded-full border border-white/[0.08]" />
-        <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-brand-blue/[0.18] blur-3xl" />
-        <div className="relative max-w-2xl">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-sky-100 uppercase">
-            <span className="size-1.5 rounded-full bg-brand-blue" />
-            Your voice shapes the future
-          </span>
-          <h1 className="mt-5 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
-            Welcome to your{" "}
-            <span className="text-sky-200">election dashboard.</span>
-          </h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-sky-50/80">
-            Review approved candidates or submit a nomination for an available
-            position. Administrators review every application before publication.
-          </p>
-          <div className="mt-6 flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start sm:gap-3">
-            <Link
-              className="inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-center text-[11px] font-semibold text-brand-navy transition hover:bg-sky-50 sm:gap-2 sm:px-4 sm:text-xs"
-              href="/vote/nominate"
-            >
-              <span className="sm:hidden">Start nomination</span>
-              <span className="hidden sm:inline">Start a nomination</span>
-              <ArrowRight className="size-3.5" />
-            </Link>
-            <Link
-              className="inline-flex h-10 min-w-0 items-center justify-center rounded-lg border border-white/25 bg-white/[0.06] px-3 text-center text-[11px] font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.12] sm:px-4 sm:text-xs"
-              href="/vote/nominees"
-            >
-              <span className="sm:hidden">Browse nominees</span>
-              <span className="hidden sm:inline">Browse approved nominees</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
+      <OverviewHero />
       <section aria-label="Election portal summary" className="mt-5 grid grid-cols-2 gap-3">
         <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
           <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
@@ -515,7 +518,7 @@ function Overview({ data }: { data: VoterPortalData }) {
           </span>
           <div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{data.positions.length}</p>
-            <p className="text-[11px] text-slate-500">Nomination forms available</p>
+            <p className="text-[11px] text-slate-500">Candidate applications available</p>
           </div>
         </article>
         <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
@@ -523,8 +526,8 @@ function Overview({ data }: { data: VoterPortalData }) {
             <BadgeCheck className="size-[18px]" />
           </span>
           <div>
-            <p className="text-xl font-semibold tracking-tight text-slate-950">{data.approvedNomineesCount}</p>
-            <p className="text-[11px] text-slate-500">Approved nominee profiles</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{data.approvedCandidatesCount}</p>
+            <p className="text-[11px] text-slate-500">Approved candidates</p>
           </div>
         </article>
       </section>
@@ -534,42 +537,42 @@ function Overview({ data }: { data: VoterPortalData }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-700 uppercase">
-                Nominee spotlight
+                Candidate spotlight
               </p>
               <h2 className="mt-1.5 text-base font-semibold text-slate-950">
-                Meet your approved nominees
+                Meet your approved candidates
               </h2>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                {data.approvedNomineesCount > 0
-                  ? `${data.approvedNomineesCount} approved profile${data.approvedNomineesCount === 1 ? "" : "s"} available to review.`
-                  : "Approved profiles will appear here after administrator review."}
+                {data.approvedCandidatesCount > 0
+                  ? `${data.approvedCandidatesCount} approved profile${data.approvedCandidatesCount === 1 ? "" : "s"} available to review.`
+                  : "Approved candidates will appear here after administrator review."}
               </p>
             </div>
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
               <UsersRound className="size-4" />
             </span>
           </div>
-          {data.nominees.length > 0 ? (
+          {data.candidates.length > 0 ? (
             <ul className="mt-4 divide-y divide-slate-100">
-              {data.nominees.slice(0, 3).map((nominee) => (
-                <li key={nominee.id} className="flex items-center gap-3 py-3">
-                  {nominee.photoUrl ? (
+              {data.candidates.slice(0, 3).map((candidate) => (
+                <li key={candidate.id} className="flex items-center gap-3 py-3">
+                  {candidate.photoUrl ? (
                     <Image
-                      src={nominee.photoUrl}
+                      src={candidate.photoUrl}
                       alt=""
                       width={36}
                       height={36}
-                      unoptimized
+                      sizes="36px"
                       className="size-9 rounded-lg object-cover"
                     />
                   ) : (
                     <span className="flex size-9 items-center justify-center rounded-lg bg-slate-50 text-xs font-semibold text-slate-700">
-                      {nominee.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}
+                      {candidate.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-slate-800">{nominee.name}</p>
-                    <p className="mt-0.5 truncate text-[10px] text-slate-500">{nominee.positionTitle}</p>
+                    <p className="truncate text-xs font-semibold text-slate-800">{candidate.name}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-slate-500">{candidate.positionTitle}</p>
                   </div>
                   <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
                 </li>
@@ -578,9 +581,9 @@ function Overview({ data }: { data: VoterPortalData }) {
           ) : null}
           <Link
             className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-950"
-            href="/vote/nominees"
+            href="/vote/candidates"
           >
-            View all nominees <ArrowRight className="size-3.5" />
+            View all candidates <ArrowRight className="size-3.5" />
           </Link>
         </article>
 
@@ -590,18 +593,99 @@ function Overview({ data }: { data: VoterPortalData }) {
           </span>
           <h2 className="mt-4 text-sm font-semibold text-slate-900">A reviewed, transparent process</h2>
           <p className="mt-1.5 text-xs leading-5 text-slate-600">
-            Nominees are displayed only after administrator approval. Applicants
+            Candidates are displayed only after administrator approval. Applicants
             should expect their identity and eligibility to be verified.
           </p>
           <Link
             className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-900/15 bg-white px-3 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-50"
-            href="/vote/nominate"
+            href="/vote/candidate-application"
           >
-            Open nomination form <ArrowRight className="size-3.5" />
+            Open candidate application <ArrowRight className="size-3.5" />
           </Link>
         </aside>
       </section>
     </>
+  );
+}
+
+export function VoterOverviewLoading() {
+  return (
+    <div
+      aria-busy="true"
+      className="mx-auto max-w-[1500px] px-4 py-6 sm:px-8 sm:py-9"
+    >
+      <div className="mb-6">
+        <PageHeading eyebrow="Voter services" title="Election overview" />
+      </div>
+      <OverviewHero />
+      <div
+        aria-hidden="true"
+        className="mt-5 grid grid-cols-2 gap-3"
+      >
+        {[0, 1].map((item) => (
+          <article
+            key={item}
+            className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4"
+          >
+            <span className="size-10 animate-pulse rounded-xl bg-slate-100" />
+            <span className="space-y-2">
+              <span className="block h-5 w-10 animate-pulse rounded bg-slate-100" />
+              <span className="block h-3 w-24 animate-pulse rounded bg-slate-100" />
+            </span>
+          </article>
+        ))}
+      </div>
+      <div className="mt-7">
+        <div
+          aria-hidden="true"
+          className="min-h-44 rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6"
+        >
+          <span className="block h-3 w-28 animate-pulse rounded bg-slate-100" />
+          <span className="mt-3 block h-5 w-56 animate-pulse rounded bg-slate-100" />
+          <span className="mt-2 block h-3 w-64 max-w-full animate-pulse rounded bg-slate-100" />
+          <span className="mt-6 block h-10 w-full animate-pulse rounded-lg bg-slate-50" />
+          <span className="mt-2 block h-10 w-full animate-pulse rounded-lg bg-slate-50" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function VoterPortalLoading({
+  section,
+}: {
+  section: "overview" | "candidates";
+}) {
+  if (section === "overview") {
+    return <VoterOverviewLoading />;
+  }
+
+  return (
+    <div
+      aria-busy="true"
+      className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-8 sm:py-9"
+    >
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeading eyebrow="Candidate directory" title="Approved candidates" />
+        <span aria-hidden="true" className="h-9 w-28 animate-pulse rounded-full bg-slate-100" />
+      </div>
+      <div
+        aria-hidden="true"
+        className="mt-6 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      >
+        {[0, 1, 2].map((item) => (
+          <div
+            key={item}
+            className="min-h-56 rounded-2xl border border-slate-200/80 bg-white p-5"
+          >
+            <span className="block h-4 w-36 animate-pulse rounded bg-slate-100" />
+            <span className="mt-4 block h-3 w-56 max-w-full animate-pulse rounded bg-slate-100" />
+            <span className="mt-2 block h-3 w-44 max-w-full animate-pulse rounded bg-slate-100" />
+            <span className="mt-8 block h-16 w-full animate-pulse rounded-xl bg-slate-50" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -617,7 +701,7 @@ export default function VotersPortal({
   return (
     <div
       className={`mx-auto max-w-[1500px] px-4 py-6 sm:px-8 sm:py-9 ${
-        section === "nominees" || section === "results" ? "w-full" : ""
+        section === "candidates" || section === "results" ? "w-full" : ""
       }`}
     >
       {data?.databaseStatus === "unavailable" ? (
@@ -628,7 +712,7 @@ export default function VotersPortal({
           <div>
             <h2 className="text-xs font-semibold text-amber-950">Election information is temporarily unavailable</h2>
             <p className="mt-1 text-xs leading-5 text-amber-900/80">
-              Nomination forms and approved profiles could not be loaded. No
+              Candidate applications and approved profiles could not be loaded. No
               application has been accepted and voting is not available.
             </p>
           </div>
@@ -647,30 +731,30 @@ export default function VotersPortal({
         </>
       ) : null}
 
-      {section === "nominees" && data ? (
+      {section === "candidates" && data ? (
         <>
           <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
             <PageHeading
               eyebrow="Candidate directory"
-              title="Approved nominees"
+              title="Approved candidates"
             />
             <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-emerald-900 shadow-sm">
               <BadgeCheck className="size-4 text-emerald-700" />
-              {data.nominees.length} approved {data.nominees.length === 1 ? "profile" : "profiles"}
+              {data.candidates.length} approved {data.candidates.length === 1 ? "profile" : "profiles"}
             </div>
           </div>
-          <NomineeCards data={data} />
+          <CandidateCards data={data} />
         </>
       ) : null}
 
-      {section === "nominate" && data ? (
+      {section === "candidate-application" && data ? (
         <>
           <PageHeading
             eyebrow="Candidate applications"
-            title="Nomination form"
+            title="Candidate application"
           />
           <div className="mt-6">
-            <NominationApplicationForm
+            <CandidateApplicationForm
               positions={data.positions}
               unavailable={data.databaseStatus === "unavailable"}
             />

@@ -1,20 +1,20 @@
-export type NominationApplicationState = {
+export type CandidateApplicationState = {
   error: string | null;
   success: boolean;
 };
 
-export type NominationReviewState = {
+export type CandidateReviewState = {
   error: string | null;
   success: string | null;
 };
 
-export type NominationPositionOption = {
+export type CandidatePositionOption = {
   id: string;
   title: string;
   electionTitle: string;
 };
 
-export type ApprovedNominee = {
+export type ApprovedCandidate = {
   id: string;
   name: string;
   biography: string | null;
@@ -33,9 +33,9 @@ export type VoterPortalData = {
     endsAt: string;
     timezone: string;
   }[];
-  approvedNomineesCount: number;
-  positions: NominationPositionOption[];
-  nominees: ApprovedNominee[];
+  approvedCandidatesCount: number;
+  positions: CandidatePositionOption[];
+  candidates: ApprovedCandidate[];
 };
 
 export type VoterResultsData = {
@@ -61,7 +61,7 @@ export type VoterResultsData = {
   }[];
 };
 
-export type PendingNomination = {
+export type PendingCandidate = {
   id: string;
   name: string;
   email: string | null;
@@ -73,8 +73,8 @@ export type PendingNomination = {
   submittedAt: string;
 };
 
-export type PendingNominationData = {
-  applications: PendingNomination[];
-  approvedApplications: PendingNomination[];
+export type PendingCandidateData = {
+  applications: PendingCandidate[];
+  approvedApplications: PendingCandidate[];
   error: string | null;
 };

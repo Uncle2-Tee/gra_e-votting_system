@@ -5,45 +5,45 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import sharp from "sharp";
 import {
-  createNominationLookupHash,
+  createCandidateApplicationLookupHash,
   encryptVoterField,
   normalizePhoneNumber,
 } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
-import type { NominationApplicationState } from "@/lib/nomination-types";
+import type { CandidateApplicationState } from "@/lib/candidate-types";
 
-const INITIAL_STATE: NominationApplicationState = {
+const INITIAL_STATE: CandidateApplicationState = {
   error: null,
   success: false,
 };
 const MAX_PHOTO_SIZE = 2 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 20_000_000;
 
-class InvalidNominationPhotoError extends Error {}
+class InvalidCandidatePhotoError extends Error {}
 
 function readText(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
 }
 
-async function processNominationPhoto(value: FormDataEntryValue | null) {
+async function processCandidatePhoto(value: FormDataEntryValue | null) {
   if (value === null) {
     return null;
   }
   if (typeof value === "string") {
-    throw new InvalidNominationPhotoError();
+    throw new InvalidCandidatePhotoError();
   }
   if (value.size === 0) {
     return null;
   }
   if (value.size > MAX_PHOTO_SIZE) {
-    throw new InvalidNominationPhotoError();
+    throw new InvalidCandidatePhotoError();
   }
   if (
     value.type &&
     !["image/jpeg", "image/png", "image/webp"].includes(value.type)
   ) {
-    throw new InvalidNominationPhotoError();
+    throw new InvalidCandidatePhotoError();
   }
 
   const input = Buffer.from(await value.arrayBuffer());
@@ -66,7 +66,7 @@ async function processNominationPhoto(value: FormDataEntryValue | null) {
       metadata.width * metadata.height > MAX_IMAGE_PIXELS ||
       (metadata.pages ?? 1) > 1
     ) {
-      throw new InvalidNominationPhotoError();
+      throw new InvalidCandidatePhotoError();
     }
 
     return await sharp(input, {
@@ -78,17 +78,17 @@ async function processNominationPhoto(value: FormDataEntryValue | null) {
       .webp({ quality: 82, effort: 4 })
       .toBuffer();
   } catch (error) {
-    if (error instanceof InvalidNominationPhotoError) {
+    if (error instanceof InvalidCandidatePhotoError) {
       throw error;
     }
-    throw new InvalidNominationPhotoError();
+    throw new InvalidCandidatePhotoError();
   }
 }
 
-export async function submitNominationApplication(
-  _previousState: NominationApplicationState,
+export async function submitCandidateApplication(
+  _previousState: CandidateApplicationState,
   formData: FormData,
-): Promise<NominationApplicationState> {
+): Promise<CandidateApplicationState> {
   const name = readText(formData, "name").normalize("NFKC");
   const email = readText(formData, "email").normalize("NFKC").toLocaleLowerCase("en");
   const phone = readText(formData, "phone");
@@ -114,7 +114,7 @@ export async function submitNominationApplication(
     return { ...INITIAL_STATE, error: "Enter a phone number with 7 to 15 digits." };
   }
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(positionId)) {
-    return { ...INITIAL_STATE, error: "Select an available nomination form." };
+    return { ...INITIAL_STATE, error: "Select an available position." };
   }
   if (!consent) {
     return {
@@ -124,18 +124,19 @@ export async function submitNominationApplication(
   }
 
   try {
-    const photoData = await processNominationPhoto(photoEntry);
+    const photoData = await processCandidatePhoto(photoEntry);
     const position = await prisma.position.findUnique({
       where: { id: positionId },
       select: { id: true, electionId: true },
     });
     if (!position) {
-      return { ...INITIAL_STATE, error: "That nomination form is no longer available." };
+      return { ...INITIAL_STATE, error: "That position is no longer available for candidate applications." };
     }
 
-    const applicantLookupHash = createNominationLookupHash(name, email, phone);
+    const applicantLookupHash = createCandidateApplicationLookupHash(name, email, phone);
     const normalizedPhone = normalizePhoneNumber(phone);
     const nameCiphertext = encryptVoterField(name, "candidate-name");
+    // Keep these purposes stable so existing candidate contact details remain decryptable.
     const applicantEmailCiphertext = encryptVoterField(email, "nomination-email");
     const applicantPhoneCiphertext = encryptVoterField(normalizedPhone, "nomination-phone");
     const candidateId = randomUUID();
@@ -211,7 +212,7 @@ export async function submitNominationApplication(
           )
           SELECT
             ${auditId}::uuid,
-            'CANDIDATE_NOMINATION_SUBMITTED',
+            'CANDIDATE_APPLICATION_SUBMITTED',
             'CANDIDATE',
             "id",
             'PENDING_REVIEW',
@@ -236,7 +237,7 @@ export async function submitNominationApplication(
     if (result === "unavailable") {
       return {
         ...INITIAL_STATE,
-        error: "That nomination position is no longer available. Refresh the page and try again.",
+        error: "That position is no longer available for candidate applications. Refresh the page and try again.",
       };
     }
     if (result === "duplicate") {
@@ -246,16 +247,16 @@ export async function submitNominationApplication(
       };
     }
     if (result !== "submitted") {
-      throw new Error("The nomination submission query returned no result.");
+      throw new Error("The candidate submission query returned no result.");
     }
 
     revalidatePath("/vote/access");
-    revalidatePath("/vote/nominate");
+    revalidatePath("/vote/candidate-application");
     revalidatePath("/admin", "layout");
-    revalidatePath("/admin/nominations");
+    revalidatePath("/admin/candidates");
     return { error: null, success: true };
   } catch (error) {
-    if (error instanceof InvalidNominationPhotoError) {
+    if (error instanceof InvalidCandidatePhotoError) {
       return {
         ...INITIAL_STATE,
         error: "Choose a valid JPEG, PNG, or WebP photo under 2 MB.",
@@ -275,7 +276,7 @@ export async function submitNominationApplication(
       error instanceof Prisma.PrismaClientKnownRequestError
         ? error.code
         : "UNKNOWN";
-    console.error("Candidate nomination submission failed.", {
+    console.error("Candidate application submission failed.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
       errorCode,
     });

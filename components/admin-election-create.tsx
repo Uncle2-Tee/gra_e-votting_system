@@ -4,7 +4,7 @@ import { useActionState, useState, useSyncExternalStore } from "react";
 import { CalendarPlus2 } from "lucide-react";
 import { createElection } from "@/app/admin/elections/actions";
 import { ELECTION_TIMEZONE } from "@/lib/election-timezone";
-import NominationPositionPicker from "@/components/nomination-position-picker";
+import CandidatePositionPicker from "@/components/candidate-position-picker";
 
 const initialState = { error: null, success: null };
 const subscribeToDeviceLocale = (onLocaleChange: () => void) => {
@@ -75,9 +75,9 @@ export default function AdminElectionCreate() {
           Date format follows your device settings{dateFormatExample ? ` (example: ${dateFormatExample})` : ""}.
         </p>
         <div className="col-span-2 text-xs font-medium text-slate-700">
-          <label htmlFor="custom-position-create-election">Nomination positions</label>
+          <label htmlFor="custom-position-create-election">Available positions</label>
           <div className="mt-2">
-            <NominationPositionPicker
+            <CandidatePositionPicker
               id="create-election"
               positions={positions}
               onChange={setPositions}

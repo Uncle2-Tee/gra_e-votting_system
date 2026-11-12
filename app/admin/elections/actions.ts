@@ -18,7 +18,7 @@ import {
   hasValidPositionNames,
   MAX_ELECTION_POSITIONS,
   MAX_POSITION_TITLE_LENGTH,
-} from "@/lib/nomination-positions";
+} from "@/lib/candidate-positions";
 import { prisma } from "@/lib/prisma";
 
 export type CreateElectionState = {
@@ -129,7 +129,7 @@ export async function createElection(
     timeStyle: "short",
   }).format(votingStartsAt);
   const title = publishPositionsOnly
-    ? `GRA Election - Nominations ${cycleLabel}`
+    ? `GRA Election - Candidate Applications ${cycleLabel}`
     : `GRA Election - ${cycleLabel}`;
   const initialStatus = publishPositionsOnly ? "DRAFT" : "SCHEDULED";
 
@@ -194,7 +194,7 @@ export async function createElection(
     if (publishPositionsOnly) {
       return {
         error: null,
-        success: "Nomination positions are published. Candidates can now apply and be reviewed before voting is scheduled.",
+        success: "Positions are published. Candidates can now apply and be reviewed before voting is scheduled.",
       };
     }
     if (!startsAt || !endsAt) {
@@ -202,19 +202,19 @@ export async function createElection(
     }
     return {
       error: null,
-      success: `Voting is scheduled to open on ${startsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} and close on ${endsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} (${ELECTION_TIMEZONE}). The selected positions are available for nominations.`,
+      success: `Voting is scheduled to open on ${startsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} and close on ${endsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} (${ELECTION_TIMEZONE}). Candidates may apply for the selected positions.`,
     };
   } catch (error) {
     logElectionActionFailure(
       publishPositionsOnly
-        ? "Nomination position publishing failed."
+        ? "Position publishing failed."
         : "Election creation failed.",
       error,
     );
     return {
       ...INITIAL_STATE,
       error: publishPositionsOnly
-        ? "Nomination positions could not be published. Please try again."
+        ? "Positions could not be published. Please try again."
         : "The election could not be created. Please try again.",
     };
   }
@@ -340,7 +340,7 @@ export async function addElectionPositions(
     revalidateElectionSchedule();
     return {
       error: null,
-      success: `${result.added} position${result.added === 1 ? "" : "s"} added. They are now available on the voter nomination form.`,
+      success: `${result.added} position${result.added === 1 ? "" : "s"} added. Candidates can now apply for these positions.`,
     };
   } catch (error) {
     logElectionActionFailure("Election position update failed.", error);
@@ -392,14 +392,14 @@ export async function removeElectionPosition(
         return {
           error: "The selected election could not be found.",
           title: null,
-          removedNominationCount: 0,
+          removedCandidateCount: 0,
         };
       }
       if (!canAcceptPreElectionChanges(elections[0].status)) {
         return {
           error: "Positions can only be removed before voting opens.",
           title: null,
-          removedNominationCount: 0,
+          removedCandidateCount: 0,
         };
       }
 
@@ -411,7 +411,7 @@ export async function removeElectionPosition(
         return {
           error: "The selected position could not be found.",
           title: null,
-          removedNominationCount: 0,
+          removedCandidateCount: 0,
         };
       }
 
@@ -422,7 +422,7 @@ export async function removeElectionPosition(
         return {
           error: "This position has recorded votes and cannot be removed.",
           title: null,
-          removedNominationCount: 0,
+          removedCandidateCount: 0,
         };
       }
 
@@ -440,7 +440,7 @@ export async function removeElectionPosition(
           metadata: {
             electionId,
             title: position.title,
-            removedNominationCount: candidateCount,
+            removedCandidateCount: candidateCount,
           },
         },
       });
@@ -448,7 +448,7 @@ export async function removeElectionPosition(
       return {
         error: null,
         title: position.title,
-        removedNominationCount: candidateCount,
+        removedCandidateCount: candidateCount,
       };
     });
 
@@ -457,12 +457,12 @@ export async function removeElectionPosition(
     }
 
     revalidateElectionSchedule();
-    revalidatePath("/admin/nominations");
-    revalidatePath("/vote/nominees");
+    revalidatePath("/admin/candidates");
+    revalidatePath("/vote/candidates");
     revalidatePath("/vote/results");
     return {
       error: null,
-      success: `“${result.title}” was removed${result.removedNominationCount > 0 ? ` along with ${result.removedNominationCount} nomination application${result.removedNominationCount === 1 ? "" : "s"}` : ""}.`,
+      success: `“${result.title}” was removed${result.removedCandidateCount > 0 ? ` along with ${result.removedCandidateCount} candidate application${result.removedCandidateCount === 1 ? "" : "s"}` : ""}.`,
     };
   } catch (error) {
     logElectionActionFailure("Election position removal failed.", error);
@@ -726,5 +726,5 @@ function revalidateElectionSchedule() {
   revalidatePath("/admin/elections");
   revalidatePath("/admin/eligibility");
   revalidatePath("/vote/access");
-  revalidatePath("/vote/nominate");
+  revalidatePath("/vote/candidate-application");
 }
