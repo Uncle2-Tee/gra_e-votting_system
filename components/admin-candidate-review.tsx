@@ -165,7 +165,7 @@ function ApprovedCandidateCard({ application }: { application: PendingCandidate 
   );
 
   return (
-    <article className="flex h-fit w-full min-w-0 max-w-full items-start gap-3 rounded-xl border border-emerald-100 bg-white p-3.5 shadow-sm shadow-slate-950/[0.02] sm:w-fit sm:max-w-xl">
+    <article className="flex h-fit w-full min-w-0 max-w-full items-start gap-3 rounded-xl border border-emerald-200/80 border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/70 p-3.5 shadow-sm shadow-emerald-950/[0.04] transition-colors hover:border-emerald-300 hover:shadow-md sm:w-fit sm:max-w-xl">
       {application.photoUrl ? (
         <Image
           src={application.photoUrl}

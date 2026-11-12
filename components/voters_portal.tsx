@@ -597,7 +597,7 @@ function Overview({ data }: { data: VoterPortalData }) {
             should expect their identity and eligibility to be verified.
           </p>
           <Link
-            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-900/15 bg-white px-3 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-50"
+            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 active:scale-[0.99]"
             href="/vote/candidate-application"
           >
             Open candidate application <ArrowRight className="size-3.5" />
