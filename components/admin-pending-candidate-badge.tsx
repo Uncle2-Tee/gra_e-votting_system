@@ -1,23 +1,64 @@
+import { Prisma } from "@prisma/client";
+import { setTimeout as delay } from "node:timers/promises";
 import { prisma } from "@/lib/prisma";
+
+const RETRYABLE_DATABASE_ERROR_CODES = new Set([
+  "P1001",
+  "P1002",
+  "P1008",
+  "P1017",
+  "P2024",
+]);
+
+function getDatabaseErrorCode(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code;
+  }
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return error.message.match(/\bP\d{4}\b/)?.[0] ?? error.errorCode ?? "INITIALIZATION";
+  }
+  return typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+    ? error.code
+    : "UNKNOWN";
+}
+
+function isRetryableDatabaseError(error: unknown) {
+  return (
+    RETRYABLE_DATABASE_ERROR_CODES.has(getDatabaseErrorCode(error)) ||
+    (error instanceof Prisma.PrismaClientInitializationError &&
+      /can't reach database server/i.test(error.message))
+  );
+}
+
+async function getPendingCandidateCount() {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await prisma.candidate.count({
+        where: { status: "PENDING" },
+      });
+    } catch (error) {
+      if (attempt === 2 || !isRetryableDatabaseError(error)) {
+        throw error;
+      }
+      await delay(250 * (attempt + 1));
+    }
+  }
+  throw new Error("Pending candidate count retries ended unexpectedly.");
+}
 
 export default async function AdminPendingCandidateBadge() {
   let count: number | null;
   try {
-    count = await prisma.candidate.count({
-      where: { status: "PENDING" },
-    });
+    count = await getPendingCandidateCount();
   } catch (error) {
-    const errorCode =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      typeof error.code === "string"
-        ? error.code
-        : "UNKNOWN";
-    console.error("Pending candidate count could not be loaded.", {
-      errorName: error instanceof Error ? error.name : "UnknownError",
-      errorCode,
-    });
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    const errorCode = getDatabaseErrorCode(error);
+    console.error(
+      `Pending candidate count could not be loaded. errorName=${errorName} errorCode=${errorCode}`,
+    );
     count = null;
   }
 

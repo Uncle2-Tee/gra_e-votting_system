@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useSyncExternalStore } from "react";
-import { CalendarPlus2, Plus } from "lucide-react";
+import { CalendarPlus2, ChevronDown, Plus } from "lucide-react";
 import {
   addDraftElectionPosition,
   updateElectionSchedule,
@@ -10,7 +10,6 @@ import {
 } from "@/app/admin/elections/actions";
 import { CANDIDATE_POSITION_OPTIONS, MAX_ELECTION_POSITIONS, MAX_POSITION_TITLE_LENGTH } from "@/lib/candidate-positions";
 import { ELECTION_TIMEZONE } from "@/lib/election-timezone";
-import { getPositionColors } from "@/lib/position-colors";
 
 const initialScheduleState: UpdateElectionScheduleState = {
   error: null,
@@ -28,7 +27,11 @@ export default function AdminElectionCreate({
 }: {
   initialDraft: {
     electionId: string;
-    positions: { id: string; title: string }[];
+    positions: {
+      id: string;
+      title: string;
+      includedInElection: boolean;
+    }[];
   } | null;
 }) {
   const initialPositionState: AddDraftElectionPositionState = {
@@ -75,7 +78,7 @@ export default function AdminElectionCreate({
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-slate-900">Set up the next vote</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Add positions first. Each saved position becomes available immediately on the voter candidate application form.
+            Add positions first, then choose which ones to include when scheduling. New positions are selected by default.
           </p>
         </div>
       </div>
@@ -95,20 +98,34 @@ export default function AdminElectionCreate({
               name="electionId"
               value={positionState.electionId ?? ""}
             />
-            {availablePositions.length > 0 ? (
-              <select
-                aria-label="Select a standard position"
-                name="standardPosition"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 disabled:bg-slate-50"
-                disabled={addingPosition || positionsScheduled || positionState.positions.length >= MAX_ELECTION_POSITIONS}
-              >
-                <option value="">Select a position (e.g. President)</option>
-                {availablePositions.map((title) => (
-                  <option key={title} value={title}>
-                    {title}
-                  </option>
-                ))}
-              </select>
+            {availablePositions.length > 0 &&
+            positionState.positions.length < MAX_ELECTION_POSITIONS ? (
+              <details className="relative">
+                <summary
+                  aria-label="Choose positions for this election"
+                  className="flex h-10 w-full cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-xs text-slate-600 outline-none transition hover:border-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-700/15"
+                >
+                  <span>Choose positions for this election</span>
+                  <ChevronDown className="size-4 shrink-0" />
+                </summary>
+                <div className="absolute left-0 top-full z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                  {availablePositions.map((title) => (
+                    <label
+                      key={title}
+                      className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        name="standardPositions"
+                        value={title}
+                        disabled={addingPosition || positionsScheduled}
+                        className="size-4 shrink-0 accent-emerald-700"
+                      />
+                      <span>{title}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
             ) : null}
             {positionState.positions.length < MAX_ELECTION_POSITIONS ? (
               <div className="flex min-w-0 items-center gap-2">
@@ -130,7 +147,7 @@ export default function AdminElectionCreate({
                   className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-800/20 bg-white px-4 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Plus className="size-3.5" />
-                  {addingPosition ? "Adding…" : "Add"}
+                  {addingPosition ? "Adding…" : "Add positions"}
                 </button>
               </div>
             ) : (
@@ -150,23 +167,6 @@ export default function AdminElectionCreate({
               {positionState.success}
             </p>
           ) : null}
-          {positionState.positions.length > 0 ? (
-            <ul aria-label="Saved positions" className="mt-3 flex flex-wrap gap-2">
-              {positionState.positions.map((position) => (
-                <li
-                  key={position.id}
-                  className="rounded-full border px-2.5 py-1 text-[10px] font-medium"
-                  style={getPositionColors(position.title).badge}
-                >
-                  {position.title}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-[11px] leading-5 text-slate-500">
-              No positions have been added yet.
-            </p>
-          )}
           {positionsScheduled ? (
             <p className="mt-2 text-[11px] leading-5 text-slate-500">
               Voting is scheduled. Manage any additional position changes from this election’s schedule card.
@@ -178,12 +178,25 @@ export default function AdminElectionCreate({
           <h3 id="schedule-election-voting" className="text-xs font-semibold text-slate-800">
             Schedule voting
           </h3>
-          <form action={schedule} className="mt-2">
+          <p className="mt-1 text-[11px] leading-5 text-slate-500">
+            Set the voting opening and closing times.
+          </p>
+          <form id="election-schedule-form" action={schedule} className="mt-2">
             <input
               type="hidden"
               name="timezone"
               value={ELECTION_TIMEZONE}
             />
+            {positionState.positions
+              .filter((position) => position.includedInElection)
+              .map((position) => (
+                <input
+                  key={position.id}
+                  type="hidden"
+                  name="positionIds"
+                  value={position.id}
+                />
+              ))}
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-4">
               <label className="min-w-0 text-[11px] font-medium text-slate-700 sm:text-xs">
                 Voting opens

@@ -95,7 +95,10 @@ export function AdminElectionsPage({
       <AdminElectionCreate
         initialDraft={
           draftElection
-            ? { electionId: draftElection.id, positions: draftElection.positions }
+            ? {
+                electionId: draftElection.id,
+                positions: draftElection.positions,
+              }
             : null
         }
       />

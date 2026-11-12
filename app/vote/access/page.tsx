@@ -82,7 +82,10 @@ async function VoterEntryContent({
             startsAt: { not: null },
             endsAt: { gte: now },
             positions: {
-              some: { candidates: { some: { status: "APPROVED" } } },
+              some: {
+                includedInElection: true,
+                candidates: { some: { status: "APPROVED" } },
+              },
             },
           },
           orderBy: [{ startsAt: "asc" }, { title: "asc" }],

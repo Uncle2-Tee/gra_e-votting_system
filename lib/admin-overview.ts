@@ -47,6 +47,7 @@ export type AdminElectionSchedules = {
     positions: {
       id: string;
       title: string;
+      includedInElection: boolean;
     }[];
   }[];
 } | {
@@ -69,7 +70,7 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
         timezone: true,
         positions: {
           orderBy: { displayOrder: "asc" },
-          select: { id: true, title: true },
+          select: { id: true, title: true, includedInElection: true },
         },
       },
     });

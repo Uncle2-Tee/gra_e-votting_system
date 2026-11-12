@@ -42,6 +42,11 @@ export default function AdminElectionScheduleEditor({
     startsAt: string | null;
     endsAt: string | null;
     timezone: string;
+    positions: {
+      id: string;
+      title: string;
+      includedInElection: boolean;
+    }[];
   };
 }) {
   const canEdit =
@@ -114,13 +119,43 @@ export default function AdminElectionScheduleEditor({
             className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
           />
         </label>
+        {election.status === "DRAFT" ? (
+          <fieldset className="sm:col-span-2">
+            <legend className="text-xs font-semibold text-slate-800">
+              Positions in this election
+            </legend>
+            <p className="mt-1 text-[10px] leading-4 text-slate-500">
+              All positions are selected by default. Unchecked positions stay saved but are excluded from voter applications and voting.
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {election.positions.map((position) => (
+                <label
+                  key={position.id}
+                  className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    name="positionIds"
+                    value={position.id}
+                    defaultChecked={position.includedInElection}
+                    disabled={pending}
+                    className="size-4 shrink-0 accent-emerald-700"
+                  />
+                  <span className="min-w-0 truncate">{position.title}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
         <p className="text-[10px] leading-4 text-slate-500 sm:col-span-2">
           Times use {election.timezone}.{" "}
           {isOpen
             ? "The schedule is shared by every position. Only the closing time can be changed while voting is open."
             : isClosed
               ? "Choose a future opening and closing time to reopen this election. Votes already recorded will be kept, and voters can only vote for positions they have not already voted in."
-              : "This schedule applies to every position in the election. Opening must remain in the future, and closing must be later than opening."}
+              : election.status === "DRAFT"
+                ? "Choose one or more positions, then set the opening and closing times."
+                : "Only selected positions appear in voter applications and voting. Opening must remain in the future, and closing must be later than opening."}
         </p>
         {state.error ? (
           <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:col-span-2">

@@ -177,15 +177,16 @@ model VoteParticipation {
 // ==========================================
 
 model Position {
-  id            String   @id @default(uuid()) @db.Uuid
-  electionId    String   @db.Uuid
-  title         String
-  description   String?
-  displayOrder  Int      @default(0)
-  minSelections Int      @default(1)
-  maxSelections Int      @default(1)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(uuid()) @db.Uuid
+  electionId         String   @db.Uuid
+  title              String
+  description        String?
+  displayOrder       Int      @default(0)
+  includedInElection Boolean  @default(true)
+  minSelections      Int      @default(1)
+  maxSelections      Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   election         Election            @relation(fields: [electionId], references: [id], onDelete: Restrict)
   candidates       Candidate[]

@@ -73,7 +73,10 @@ export async function getVoterPortalData(
                 endsAt: true,
                 timezone: true,
                 candidates: {
-                  where: { status: "APPROVED" },
+                  where: {
+                    status: "APPROVED",
+                    position: { is: { includedInElection: true } },
+                  },
                   take: 1,
                   select: { id: true },
                 },
@@ -82,7 +85,10 @@ export async function getVoterPortalData(
           : Promise.resolve([]),
         section !== "candidates"
           ? prisma.position.findMany({
-              where: { election: { status: { not: "ARCHIVED" } } },
+              where: {
+                includedInElection: true,
+                election: { status: { not: "ARCHIVED" } },
+              },
               orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
               select: {
                 id: true,
@@ -95,7 +101,7 @@ export async function getVoterPortalData(
           ? prisma.candidate.findMany({
               where: {
                 status: "APPROVED",
-                election: { is: { status: { not: "ARCHIVED" } } },
+                position: { is: { includedInElection: true } },
               },
               orderBy: [
                 { election: { startsAt: "asc" } },
@@ -117,7 +123,7 @@ export async function getVoterPortalData(
           ? prisma.candidate.count({
               where: {
                 status: "APPROVED",
-                election: { is: { status: { not: "ARCHIVED" } } },
+                position: { is: { includedInElection: true } },
               },
             })
           : Promise.resolve(undefined),
@@ -223,6 +229,7 @@ function queryVoterResults() {
         startsAt: true,
         endsAt: true,
         positions: {
+          where: { includedInElection: true },
           orderBy: { displayOrder: "asc" },
           select: {
             id: true,

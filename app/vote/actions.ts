@@ -148,6 +148,13 @@ export async function submitCandidateApplication(
           FROM "Election"
           WHERE "id" = ${position.electionId}::uuid
             AND "status" != 'ARCHIVED'::"ElectionStatus"
+            AND EXISTS (
+              SELECT 1
+              FROM "Position" selected_position
+              WHERE selected_position."id" = ${positionId}::uuid
+                AND selected_position."electionId" = ${position.electionId}::uuid
+                AND selected_position."includedInElection" = TRUE
+            )
           FOR SHARE
         ),
         saved_candidate AS (

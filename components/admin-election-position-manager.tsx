@@ -58,7 +58,11 @@ export default function AdminElectionPositionManager({
   election: {
     id: string;
     status: string;
-    positions: { id: string; title: string }[];
+    positions: {
+      id: string;
+      title: string;
+      includedInElection: boolean;
+    }[];
   };
 }) {
   const [state, action, pending] = useActionState(
@@ -78,7 +82,7 @@ export default function AdminElectionPositionManager({
       <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
         <p className="text-[11px] font-semibold text-slate-700">Current positions</p>
         <p className="mt-1 text-[10px] leading-4 text-slate-500">
-          Delete a position here to remove it from candidate applications. Any applications for it will also be deleted.
+          Positions not selected for an election remain saved but are hidden from voter applications and voting. Deleting a position also deletes its applications.
         </p>
         {election.positions.length > 0 ? (
           <ul className="mt-2 space-y-1.5">
@@ -87,12 +91,19 @@ export default function AdminElectionPositionManager({
                 key={position.id}
                 className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
               >
-                <span
-                  className="min-w-0 break-words rounded-md border px-2 py-1 text-[10px] font-medium"
-                  style={getPositionColors(position.title).badge}
-                >
-                  {position.title}
-                </span>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span
+                    className="min-w-0 break-words rounded-md border px-2 py-1 text-[10px] font-medium"
+                    style={getPositionColors(position.title).badge}
+                  >
+                    {position.title}
+                  </span>
+                  {!position.includedInElection ? (
+                    <span className="text-[9px] font-medium text-slate-500">
+                      Not selected
+                    </span>
+                  ) : null}
+                </div>
                 {canEditPositions ? (
                   <RemovePositionButton electionId={election.id} position={position} />
                 ) : null}

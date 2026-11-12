@@ -372,7 +372,7 @@ export async function submitPositionVote(
       electionVoterId = electionVoter.id;
 
       const position = await transaction.position.findFirst({
-        where: { id: positionId, electionId },
+        where: { id: positionId, electionId, includedInElection: true },
         select: { id: true, minSelections: true, maxSelections: true },
       });
       const candidate = await transaction.candidate.findFirst({

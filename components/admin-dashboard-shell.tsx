@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import {
   BadgeCheck,
   ChartNoAxesCombined,
-  Database,
   FileSpreadsheet,
   LayoutDashboard,
   LogOut,
@@ -36,7 +35,6 @@ const navigationGroups = [
     label: "Governance",
     items: [
       { id: "results", label: "Results & reports", href: "/admin/results", icon: ChartNoAxesCombined },
-      { id: "data", label: "Data management", href: "/admin/data", icon: Database },
     ],
   },
 ];

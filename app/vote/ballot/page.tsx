@@ -32,6 +32,7 @@ async function BallotPageContent({
       title: true,
       endsAt: true,
       positions: {
+        where: { includedInElection: true },
         orderBy: { displayOrder: "asc" },
         select: {
           id: true,

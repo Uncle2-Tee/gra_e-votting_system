@@ -32,7 +32,11 @@ export type RemoveElectionPositionState = ElectionActionState;
 export type DeleteElectionState = ElectionActionState;
 export type AddDraftElectionPositionState = ElectionActionState & {
   electionId: string | null;
-  positions: { id: string; title: string }[];
+  positions: {
+    id: string;
+    title: string;
+    includedInElection: boolean;
+  }[];
 };
 
 const INITIAL_STATE: ElectionActionState = { error: null, success: null };
@@ -126,14 +130,31 @@ export async function addDraftElectionPosition(
     return withError("You are not authorized to configure election positions.");
   }
 
-  const positionName = (
-    readText(formData, "customPosition") ||
-    readText(formData, "standardPosition")
-  ).normalize("NFKC");
+  const rawStandardPositions = formData.getAll("standardPositions");
+  const standardPositions = rawStandardPositions
+    .filter((position): position is string => typeof position === "string")
+    .map((position) => position.trim().normalize("NFKC"));
+  const customPosition = readText(formData, "customPosition").normalize("NFKC");
+  const positionNames = [
+    ...standardPositions,
+    ...(customPosition ? [customPosition] : []),
+  ];
   const electionIdValue = readText(formData, "electionId");
-  if (!hasValidPositionNames([positionName])) {
+  if (standardPositions.length !== rawStandardPositions.length) {
     return withError(
-      `Enter a position name of 1 to ${MAX_POSITION_TITLE_LENGTH} characters.`,
+      "Select valid positions and try again.",
+      electionIdValue || previousState.electionId,
+    );
+  }
+  if (positionNames.length === 0) {
+    return withError(
+      "Choose at least one standard position or enter a custom position.",
+      electionIdValue || previousState.electionId,
+    );
+  }
+  if (!hasValidPositionNames(positionNames)) {
+    return withError(
+      `Choose unique position names. Custom names must be 1 to ${MAX_POSITION_TITLE_LENGTH} characters.`,
       electionIdValue || previousState.electionId,
     );
   }
@@ -220,35 +241,54 @@ export async function addDraftElectionPosition(
       const existingPositions = await transaction.position.findMany({
         where: { electionId },
         orderBy: { displayOrder: "asc" },
-        select: { id: true, title: true, displayOrder: true },
+        select: {
+          id: true,
+          title: true,
+          displayOrder: true,
+          includedInElection: true,
+        },
       });
-      if (existingPositions.length >= MAX_ELECTION_POSITIONS) {
+      if (existingPositions.length + positionNames.length > MAX_ELECTION_POSITIONS) {
         return {
           error: `An election can have at most ${MAX_ELECTION_POSITIONS} positions.` as const,
           electionId,
-          positions: existingPositions.map(({ id, title }) => ({ id, title })),
+          positions: existingPositions.map(
+            ({ id, title, includedInElection }) => ({
+              id,
+              title,
+              includedInElection,
+            }),
+          ),
         };
       }
       if (
-        existingPositions.some(
-          (position) =>
-            position.title.toLocaleLowerCase("en") ===
-            positionName.toLocaleLowerCase("en"),
+        positionNames.some((positionName) =>
+          existingPositions.some(
+            (position) =>
+              position.title.toLocaleLowerCase("en") ===
+              positionName.toLocaleLowerCase("en"),
+          ),
         )
       ) {
         return {
-          error: "That position has already been added." as const,
+          error: "One or more selected positions have already been added." as const,
           electionId,
-          positions: existingPositions.map(({ id, title }) => ({ id, title })),
+          positions: existingPositions.map(
+            ({ id, title, includedInElection }) => ({
+              id,
+              title,
+              includedInElection,
+            }),
+          ),
         };
       }
 
-      await transaction.position.create({
-        data: {
+      await transaction.position.createMany({
+        data: positionNames.map((title, index) => ({
           electionId,
-          title: positionName,
-          displayOrder: existingPositions.length,
-        },
+          title,
+          displayOrder: existingPositions.length + index,
+        })),
       });
       await transaction.auditLog.create({
         data: {
@@ -257,17 +297,17 @@ export async function addDraftElectionPosition(
           entityType: "ELECTION",
           entityId: electionId,
           outcome: "UPDATED",
-          metadata: { positions: [positionName] },
+          metadata: { positions: positionNames },
         },
       });
 
       const positions = await transaction.position.findMany({
         where: { electionId },
         orderBy: { displayOrder: "asc" },
-        select: { id: true, title: true },
+        select: { id: true, title: true, includedInElection: true },
       });
       return { electionId, positions };
-      }),
+      }, { maxWait: 15_000, timeout: 60_000 }),
     );
 
     if (typeof saved.error === "string") {
@@ -289,7 +329,10 @@ export async function addDraftElectionPosition(
     revalidateElectionSchedule();
     return {
       error: null,
-      success: `"${positionName}" is now available on the voter candidate application form.`,
+      success:
+        positionNames.length === 1
+          ? `"${positionNames[0]}" is now available on the voter candidate application form.`
+          : `${positionNames.length} positions are now available on the voter candidate application form.`,
       electionId: saved.electionId,
       positions: saved.positions,
     };
@@ -598,6 +641,10 @@ export async function updateElectionSchedule(
 
   const startsAtValue = readText(formData, "startsAt");
   const endsAtValue = readText(formData, "endsAt");
+  const rawPositionIds = formData.getAll("positionIds");
+  const submittedPositionIds = rawPositionIds.filter(
+    (positionId): positionId is string => typeof positionId === "string",
+  );
 
   try {
     await synchronizeElectionStatuses();
@@ -620,6 +667,7 @@ export async function updateElectionSchedule(
 
       const now = new Date();
       const status = getEffectiveElectionStatus(election, now);
+      const selectedPositionIds = [...new Set(submittedPositionIds)];
       if (
         !canAcceptPreElectionChanges(status) &&
         status !== "OPEN" &&
@@ -630,11 +678,27 @@ export async function updateElectionSchedule(
         };
       }
       if (status === "DRAFT") {
-        const positionCount = await transaction.position.count({
+        if (
+          submittedPositionIds.length !== rawPositionIds.length ||
+          selectedPositionIds.some((positionId) => !UUID_PATTERN.test(positionId))
+        ) {
+          return { error: "One or more selected positions are invalid. Refresh and try again." };
+        }
+        if (selectedPositionIds.length === 0) {
+          return { error: "Select at least one position before scheduling voting." };
+        }
+        const electionPositions = await transaction.position.findMany({
           where: { electionId },
+          select: { id: true },
         });
-        if (positionCount === 0) {
+        if (electionPositions.length === 0) {
           return { error: "Add at least one position before scheduling voting." };
+        }
+        const electionPositionIds = new Set(
+          electionPositions.map(({ id }) => id),
+        );
+        if (selectedPositionIds.some((id) => !electionPositionIds.has(id))) {
+          return { error: "One or more selected positions do not belong to this election. Refresh and try again." };
         }
       }
 
@@ -655,6 +719,15 @@ export async function updateElectionSchedule(
         return { error: "The voting closing time must be after its opening time." };
       }
       if (status === "DRAFT") {
+        await transaction.position.updateMany({
+          where: { electionId },
+          data: { includedInElection: false },
+        });
+        await transaction.position.updateMany({
+          where: { electionId, id: { in: selectedPositionIds } },
+          data: { includedInElection: true },
+        });
+
         const activeVoters = await transaction.voter.findMany({
           where: { status: "ACTIVE" },
           select: { id: true },
@@ -692,6 +765,9 @@ export async function updateElectionSchedule(
             previousEndsAt: election.endsAt?.toISOString() ?? null,
             startsAt: startsAt?.toISOString() ?? null,
             endsAt: endsAt.toISOString(),
+            ...(status === "DRAFT"
+              ? { includedPositionIds: selectedPositionIds }
+              : {}),
           },
         },
       });
@@ -843,5 +919,8 @@ function revalidateElectionSchedule() {
   revalidatePath("/admin/eligibility");
   revalidatePath("/vote/overview");
   revalidatePath("/vote/access");
+  revalidatePath("/vote/ballot");
   revalidatePath("/vote/candidate-application");
+  revalidatePath("/vote/candidates");
+  revalidatePath("/vote/results");
 }
