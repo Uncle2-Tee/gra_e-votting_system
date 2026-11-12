@@ -21,6 +21,7 @@ import type {
   CandidateReviewState,
   PendingCandidate,
 } from "@/lib/candidate-types";
+import { getPositionColors } from "@/lib/position-colors";
 
 const initialState: CandidateReviewState = { error: null, success: null };
 
@@ -34,10 +35,11 @@ function formatSubmittedAt(value: string) {
 
 function CandidateCard({ application }: { application: PendingCandidate }) {
   const [state, action, pending] = useActionState(reviewCandidate, initialState);
+  const positionColors = getPositionColors(application.positionTitle);
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-950/[0.06]">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-300 via-teal-400 to-emerald-200" />
+    <article className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-950/[0.06]">
+      <div className="absolute inset-x-0 top-0 h-1" style={positionColors.accent} />
       <div className="p-4">
         <div className="flex min-w-0 items-center gap-3">
           {application.photoUrl ? (
@@ -47,10 +49,13 @@ function CandidateCard({ application }: { application: PendingCandidate }) {
               width={44}
               height={44}
               unoptimized
-              className="size-11 shrink-0 rounded-xl object-cover ring-2 ring-emerald-50"
+              className="size-11 shrink-0 rounded-xl object-cover ring-2 ring-white"
             />
           ) : (
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 text-xs font-bold text-emerald-900 ring-2 ring-emerald-50">
+            <span
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl text-xs font-bold ring-2 ring-white"
+              style={positionColors.avatar}
+            >
               {application.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}
             </span>
           )}
@@ -71,8 +76,11 @@ function CandidateCard({ application }: { application: PendingCandidate }) {
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-[10px] font-medium text-violet-900">
-            <UserRound className="size-3 shrink-0 text-violet-700" />
+          <span
+            className="inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-medium"
+            style={positionColors.badge}
+          >
+            <UserRound className="size-3 shrink-0" />
             <span className="truncate">{application.positionTitle}</span>
           </span>
           <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[10px] font-medium text-emerald-900">
@@ -163,9 +171,13 @@ function ApprovedCandidateCard({ application }: { application: PendingCandidate 
     removeApprovedCandidate,
     initialState,
   );
+  const positionColors = getPositionColors(application.positionTitle);
 
   return (
-    <article className="flex h-fit w-full min-w-0 max-w-full items-start gap-3 rounded-xl border border-emerald-200/80 border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/70 p-3.5 shadow-sm shadow-emerald-950/[0.04] transition-colors hover:border-emerald-300 hover:shadow-md sm:w-fit sm:max-w-xl">
+    <article
+      className="flex h-fit w-full min-w-0 max-w-full items-start gap-3 rounded-xl border border-l-4 p-3.5 shadow-sm shadow-slate-950/[0.04] transition-colors hover:shadow-md sm:w-fit sm:max-w-xl"
+      style={{ ...positionColors.surface, borderLeftColor: positionColors.accentColor }}
+    >
       {application.photoUrl ? (
         <Image
           src={application.photoUrl}
@@ -173,10 +185,13 @@ function ApprovedCandidateCard({ application }: { application: PendingCandidate 
           width={44}
           height={44}
           unoptimized
-          className="size-11 shrink-0 rounded-xl object-cover"
+          className="size-11 shrink-0 rounded-xl object-cover ring-2 ring-white"
         />
       ) : (
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-xs font-bold text-emerald-900">
+        <span
+          className="flex size-11 shrink-0 items-center justify-center rounded-xl text-xs font-bold"
+          style={positionColors.avatar}
+        >
           {application.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}
         </span>
       )}
@@ -190,8 +205,11 @@ function ApprovedCandidateCard({ application }: { application: PendingCandidate 
             Approved
           </span>
         </div>
-        <p className="mt-1 break-words text-[11px] font-medium text-emerald-800">
-          {application.positionTitle} <span className="font-normal text-slate-400">·</span>{" "}
+        <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="rounded-md border px-2 py-0.5 font-medium" style={positionColors.badge}>
+            {application.positionTitle}
+          </span>
+          <span className="font-normal text-slate-400">·</span>
           <span className="font-normal text-slate-600">{application.electionTitle}</span>
         </p>
         <div className="mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1">

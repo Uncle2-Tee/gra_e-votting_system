@@ -7,6 +7,7 @@ import {
   MAX_POSITION_TITLE_LENGTH,
   CANDIDATE_POSITION_OPTIONS,
 } from "@/lib/candidate-positions";
+import { getPositionColors } from "@/lib/position-colors";
 
 export default function CandidatePositionPicker({
   id,
@@ -125,7 +126,8 @@ export default function CandidatePositionPicker({
           {positions.map((position) => (
             <li
               key={position}
-              className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-900"
+              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium"
+              style={getPositionColors(position).badge}
             >
               {position}
               <button
@@ -134,7 +136,7 @@ export default function CandidatePositionPicker({
                 onClick={() =>
                   onChange(positions.filter((selected) => selected !== position))
                 }
-                className="flex size-6 items-center justify-center rounded-full text-emerald-800 hover:bg-emerald-100"
+                className="flex size-6 items-center justify-center rounded-full hover:bg-black/5"
               >
                 <Trash2 className="size-3" />
               </button>

@@ -10,6 +10,7 @@ import {
 } from "@/app/admin/elections/actions";
 import CandidatePositionPicker from "@/components/candidate-position-picker";
 import { MAX_ELECTION_POSITIONS } from "@/lib/candidate-positions";
+import { getPositionColors } from "@/lib/position-colors";
 
 const INITIAL_STATE: AddElectionPositionsState = { error: null, success: null };
 const INITIAL_REMOVE_STATE: RemoveElectionPositionState = { error: null, success: null };
@@ -86,7 +87,10 @@ export default function AdminElectionPositionManager({
                 key={position.id}
                 className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
               >
-                <span className="min-w-0 break-words text-[10px] font-medium text-slate-700">
+                <span
+                  className="min-w-0 break-words rounded-md border px-2 py-1 text-[10px] font-medium"
+                  style={getPositionColors(position.title).badge}
+                >
                   {position.title}
                 </span>
                 {canEditPositions ? (

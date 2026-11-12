@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ArrowRight, FilePlus2, ImagePlus, ShieldCheck, Trash2 } from "lucide-react";
 import { submitCandidateApplication } from "@/app/vote/actions";
+import { getPositionColors } from "@/lib/position-colors";
 import type {
   CandidateApplicationState,
   CandidatePositionOption,
@@ -160,6 +161,13 @@ export default function CandidateApplicationForm({
     submitCandidateApplication,
     initialState,
   );
+  const [selectedPositionId, setSelectedPositionId] = useState("");
+  const selectedPosition = positions.find(
+    (position) => position.id === selectedPositionId,
+  );
+  const selectedPositionColors = selectedPosition
+    ? getPositionColors(selectedPosition.title)
+    : null;
   const disabled = unavailable || positions.length === 0 || pending;
 
   return (
@@ -218,6 +226,7 @@ export default function CandidateApplicationForm({
               required
               defaultValue=""
               disabled={disabled}
+              onChange={(event) => setSelectedPositionId(event.currentTarget.value)}
             >
               <option value="" disabled>
                 Select a position
@@ -231,6 +240,21 @@ export default function CandidateApplicationForm({
             <span className="mt-1.5 block text-[11px] leading-4 text-slate-500">
               Select the position you are applying for. Other candidates may apply for this same position.
             </span>
+            {selectedPosition && selectedPositionColors ? (
+              <span
+                className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-semibold"
+                style={selectedPositionColors.badge}
+              >
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full"
+                  style={{
+                    backgroundColor: selectedPositionColors.accentColor,
+                  }}
+                />
+                {selectedPosition.title}
+              </span>
+            ) : null}
           </label>
           <label className="text-xs font-medium text-slate-700">
             Email address

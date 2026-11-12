@@ -21,25 +21,25 @@ const metrics = [
 export default function AdminPortal({ overview }: { overview: AdminOverview }) {
   return (
     <main id="overview" className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
-      <section className="relative overflow-hidden rounded-2xl border border-emerald-800/20 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-900 px-5 py-6 text-white shadow-sm sm:px-8 sm:py-8">
+      <section className="relative overflow-hidden rounded-2xl border border-brand-navy/20 bg-gradient-to-br from-brand-navy via-emerald-900 to-brand-blue px-5 py-6 text-white shadow-lg shadow-brand-navy/10 sm:px-8 sm:py-8">
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-10 bg-gradient-to-b from-transparent to-[#f6f9fc]/70" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-24 size-72 rounded-full border border-white/10" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-2 -top-12 size-48 rounded-full border border-white/10" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-24 size-72 rounded-full border border-white/[0.08]" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-2 -top-12 size-48 rounded-full border border-white/[0.08]" />
         <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
-            <div className="flex items-center gap-2 text-xs font-medium text-emerald-100">
+            <div className="flex items-center gap-2 text-xs font-medium text-sky-100">
               <Building2 className="size-3.5" />
               GRA E-Voting Management System
             </div>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-[32px]">
               System overview
             </h1>
-            <p className="mt-2 text-sm leading-6 text-emerald-50/80">
+            <p className="mt-2 text-sm leading-6 text-sky-50/80">
               A central view of election activity, voter records, and participation across the system.
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 self-start rounded-full border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white lg:self-auto">
+          <div className="flex shrink-0 items-center gap-2 self-start rounded-full border border-white/15 bg-white/[0.08] px-3 py-2 text-xs font-medium text-sky-100 lg:self-auto">
             <span className={`size-2 rounded-full ${overview.databaseStatus === "connected" ? "bg-emerald-300" : "bg-amber-300"}`} />
             {overview.databaseStatus === "connected" ? "System data connected" : "System data unavailable"}
           </div>
@@ -47,7 +47,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
         <div className="relative z-10 mt-6 flex flex-wrap items-center gap-3 border-t border-white/15 pt-5">
           <Link
             href="/admin/candidates"
-            className="inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-xs font-semibold text-emerald-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
+            className="inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-xs font-semibold text-brand-navy shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
           >
             <FileCheck2 className="size-4" />
             <span className="sm:hidden">Review</span>
@@ -56,7 +56,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
           </Link>
           <Link
             href="/admin/eligibility"
-            className="inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl border border-white/35 bg-white/10 px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-white/20 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
+            className="inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl border border-white/25 bg-white/[0.06] px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/[0.12] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
           >
             <Settings2 className="size-4" />
             <span className="sm:hidden">Imports</span>

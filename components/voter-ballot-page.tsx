@@ -7,6 +7,7 @@ import { ArrowLeft, BadgeCheck, Check, Clock3, ShieldCheck } from "lucide-react"
 import { submitPositionVote } from "@/app/vote/ballot-actions";
 import CopyVoterIdButton from "@/components/copy-voter-id-button";
 import type { VoterActionState } from "@/lib/voter-ballot-types";
+import { getPositionColors } from "@/lib/position-colors";
 
 type BallotPosition = {
   id: string;
@@ -47,15 +48,29 @@ function PositionBallotCard({
   const alreadySubmitted = alreadyVoted || Boolean(state.message);
   const voterIdReady =
     hasVoterSession || VOTER_ID_PATTERN.test(voterId) || LEGACY_VOTER_ID_PATTERN.test(voterId);
+  const positionColors = getPositionColors(position.title);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section
+      className="rounded-2xl border border-t-4 bg-white p-5 shadow-sm sm:p-6"
+      style={{
+        ...positionColors.surface,
+        borderTopColor: positionColors.accentColor,
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-700 uppercase">
             Position
           </p>
-          <h2 className="mt-1 text-base font-semibold text-slate-950">{position.title}</h2>
+          <h2 className="mt-1">
+            <span
+              className="inline-flex rounded-md border px-2 py-1 text-sm font-semibold"
+              style={positionColors.badge}
+            >
+              {position.title}
+            </span>
+          </h2>
         </div>
         <span className="rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-600">
           {position.candidates.length}{" "}
@@ -88,9 +103,10 @@ function PositionBallotCard({
                 key={candidate.id}
                 className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors ${
                   selected
-                    ? "border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/10"
-                    : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50"
+                    ? ""
+                    : "border-slate-200 bg-white hover:bg-slate-50"
                 }`}
+                style={selected ? positionColors.selected : undefined}
               >
                 <input
                   type="radio"
@@ -103,7 +119,8 @@ function PositionBallotCard({
                     setCandidateId(candidate.id);
                     setReviewing(false);
                   }}
-                  className="size-4 accent-emerald-700"
+                  className="size-4"
+                  style={positionColors.radio}
                 />
                 {candidate.photoUrl ? (
                   <Image
@@ -136,8 +153,14 @@ function PositionBallotCard({
         </fieldset>
 
         {reviewing && selectedCandidate ? (
-          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5">
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-emerald-800 uppercase">
+          <div
+            className="mt-4 rounded-xl border p-3.5"
+            style={positionColors.surface}
+          >
+            <p
+              className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase"
+              style={positionColors.text}
+            >
               <ShieldCheck className="size-3.5" />
               Review your choice
             </p>

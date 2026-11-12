@@ -14,6 +14,7 @@ import Link from "next/link";
 import CandidateApplicationForm from "@/components/candidate-application-form";
 import ResultsAutoRefresh from "@/components/results-auto-refresh";
 import type { VoterPortalData, VoterResultsData } from "@/lib/candidate-types";
+import { getPositionColors } from "@/lib/position-colors";
 
 type PortalSection = "overview" | "candidates" | "candidate-application" | "results";
 
@@ -63,64 +64,73 @@ function CandidateCards({ data }: { data: VoterPortalData }) {
 
   return (
     <div className="mt-6 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {data.candidates.map((candidate) => (
-        <article
-          key={candidate.id}
-          className="group relative min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-950/[0.06]"
-        >
-          <div className="h-1 bg-gradient-to-r from-emerald-700 via-teal-500 to-emerald-200" />
-          <div className="p-5">
-            <div className="flex min-w-0 items-center gap-4">
-              {candidate.photoUrl ? (
-                <Image
-                  src={candidate.photoUrl}
-                  alt={`${candidate.name} profile`}
-                  width={72}
-                  height={72}
-                  sizes="72px"
-                  className="size-[72px] shrink-0 rounded-2xl object-cover ring-4 ring-emerald-50"
-                />
+      {data.candidates.map((candidate) => {
+        const positionColors = getPositionColors(candidate.positionTitle);
+        return (
+          <article
+            key={candidate.id}
+            className="group relative min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-950/[0.06]"
+          >
+            <div className="h-1" style={positionColors.accent} />
+            <div className="p-5">
+              <div className="flex min-w-0 items-center gap-4">
+                {candidate.photoUrl ? (
+                  <Image
+                    src={candidate.photoUrl}
+                    alt={`${candidate.name} profile`}
+                    width={72}
+                    height={72}
+                    sizes="72px"
+                    className="size-[72px] shrink-0 rounded-2xl object-cover ring-4 ring-white"
+                  />
+                ) : (
+                  <span
+                    className="flex size-[72px] shrink-0 items-center justify-center rounded-2xl text-lg font-bold ring-4 ring-white"
+                    style={positionColors.avatar}
+                  >
+                    {candidate.name
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((part) => part.charAt(0).toUpperCase())
+                      .join("")}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-semibold tracking-wide text-emerald-800 uppercase">
+                    <BadgeCheck className="size-3" />
+                    Approved candidate
+                  </span>
+                  <h2 className="mt-2 break-words text-base font-semibold leading-5 tracking-tight text-slate-950">
+                    {candidate.name}
+                  </h2>
+                  <span
+                    className="mt-1 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold"
+                    style={positionColors.badge}
+                  >
+                    {candidate.positionTitle}
+                  </span>
+                </div>
+              </div>
+              {candidate.biography ? (
+                <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+                  <p className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 uppercase">
+                    Candidate statement
+                  </p>
+                  <p className="mt-2 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
+                    {candidate.biography}
+                  </p>
+                </div>
               ) : (
-                <span className="flex size-[72px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 text-lg font-bold text-emerald-900 ring-4 ring-emerald-50">
-                  {candidate.name
-                    .split(/\s+/)
-                    .slice(0, 2)
-                    .map((part) => part.charAt(0).toUpperCase())
-                    .join("")}
-                </span>
+                <div className="mt-5 border-t border-slate-100 pt-3">
+                  <p className="text-[10px] leading-4 text-slate-400">
+                    Approved profile
+                  </p>
+                </div>
               )}
-              <div className="min-w-0 flex-1">
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-semibold tracking-wide text-emerald-800 uppercase">
-                  <BadgeCheck className="size-3" />
-                  Approved candidate
-                </span>
-                <h2 className="mt-2 break-words text-base font-semibold leading-5 tracking-tight text-slate-950">
-                  {candidate.name}
-                </h2>
-                <p className="mt-1 break-words text-xs font-medium text-emerald-800">
-                  {candidate.positionTitle}
-                </p>
-              </div>
             </div>
-            {candidate.biography ? (
-              <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
-                <p className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 uppercase">
-                  Candidate statement
-                </p>
-                <p className="mt-2 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
-                  {candidate.biography}
-                </p>
-              </div>
-            ) : (
-              <div className="mt-5 border-t border-slate-100 pt-3">
-                <p className="text-[10px] leading-4 text-slate-400">
-                  Approved profile
-                </p>
-              </div>
-            )}
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -179,6 +189,7 @@ export function ElectionWinnersPanel({ data }: { data: VoterResultsData }) {
         {highlights.map(({ election, position, leaders }) => {
           const isTie = leaders.length > 1;
           const label = isTie ? "Tied winners" : "Winner";
+          const positionColors = getPositionColors(position.title);
 
           return (
             <article
@@ -193,7 +204,10 @@ export function ElectionWinnersPanel({ data }: { data: VoterResultsData }) {
                   {label}
                 </span>
               </div>
-              <h3 className="mt-2 text-xs font-medium text-white/75">
+              <h3
+                className="mt-2 inline-flex rounded-md border px-2 py-1 text-[10px] font-semibold"
+                style={positionColors.badge}
+              >
                 {position.title}
               </h3>
               <ul className="mt-3 space-y-3">
@@ -305,6 +319,7 @@ export function ElectionResultsPanel({
               {election.positions.length > 0 ? (
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   {election.positions.map((position) => {
+                    const positionColors = getPositionColors(position.title);
                     const rankedCandidates = [...position.candidates].sort(
                       (left, right) =>
                         right.votes - left.votes || left.name.localeCompare(right.name),
@@ -325,10 +340,19 @@ export function ElectionResultsPanel({
                     );
 
                     return (
-                      <section key={position.id} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                      <section
+                        key={position.id}
+                        className="min-w-0 rounded-xl border p-4"
+                        style={positionColors.surface}
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <h3 className="text-sm font-semibold text-slate-900">{position.title}</h3>
+                            <h3
+                              className="inline-flex rounded-md border px-2 py-1 text-xs font-semibold"
+                              style={positionColors.badge}
+                            >
+                              {position.title}
+                            </h3>
                             <p className="mt-0.5 text-[10px] text-slate-500">
                               {rankedCandidates.length} {rankedCandidates.length === 1 ? "candidate" : "candidates"} · 0.5 percentage points per vote
                             </p>
@@ -572,7 +596,12 @@ function Overview({ data }: { data: VoterPortalData }) {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-slate-800">{candidate.name}</p>
-                    <p className="mt-0.5 truncate text-[10px] text-slate-500">{candidate.positionTitle}</p>
+                    <span
+                      className="mt-1 inline-flex max-w-full truncate rounded-md border px-1.5 py-0.5 text-[9px] font-semibold"
+                      style={getPositionColors(candidate.positionTitle).badge}
+                    >
+                      {candidate.positionTitle}
+                    </span>
                   </div>
                   <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
                 </li>
