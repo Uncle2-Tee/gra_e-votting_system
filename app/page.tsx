@@ -49,14 +49,9 @@ export default function HomePage() {
 
         <div className="relative isolate grid flex-1 items-start gap-8 pt-3 pb-6 md:grid-cols-[1.05fr_0.95fr] md:gap-12 md:pt-4 md:pb-14 lg:gap-16">
           <section aria-labelledby="welcome-heading" className="relative z-10 max-w-2xl">
-            <p className="inline-flex items-center gap-2 rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-200">
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-yellow-300" />
-              Ghana Revenue Authority · HOTSC
-            </p>
-
             <h1
               id="welcome-heading"
-              className="mt-5 text-5xl font-semibold leading-[1.04] tracking-[-0.045em] sm:text-6xl lg:text-7xl"
+              className="text-5xl font-semibold leading-[1.04] tracking-[-0.045em] sm:text-6xl lg:text-7xl"
             >
               Your vote.
               <span className="mt-1 block text-yellow-300">Your voice.</span>
@@ -68,10 +63,10 @@ export default function HomePage() {
               simple place.
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-6">
               <Link
                 href="/vote/overview"
-                className="group inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-yellow-300 px-5 text-sm font-semibold text-[#082c49] shadow-lg shadow-yellow-950/20 transition hover:-translate-y-0.5 hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-200"
+                className="group inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-yellow-300 px-5 text-sm font-semibold text-[#082c49] shadow-lg shadow-yellow-950/20 transition hover:-translate-y-0.5 hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-200 sm:w-auto"
               >
                 Enter voter portal
                 <ArrowRight
@@ -79,17 +74,14 @@ export default function HomePage() {
                   className="size-4 transition-transform group-hover:translate-x-0.5"
                 />
               </Link>
-              <Link
-                href="/vote/candidates"
-                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/15 px-5 text-sm font-medium text-white transition hover:border-white/30 hover:bg-white/5"
-              >
-                View candidates
-              </Link>
             </div>
 
-            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs text-blue-100/70 sm:mt-10 md:mt-16">
+            <ul className="mt-8 grid grid-cols-3 gap-2 text-xs text-blue-100/70 sm:mt-10 md:mt-16 md:flex md:flex-wrap md:gap-x-6 md:gap-y-3">
               {portalFeatures.map(({ icon: Icon, label }) => (
-                <li key={label} className="inline-flex items-center gap-2">
+                <li
+                  key={label}
+                  className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-2 py-3 text-center text-[10px] leading-4 text-blue-100/75 md:min-h-0 md:flex-row md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-left md:text-xs"
+                >
                   <Icon aria-hidden="true" className="size-4 text-sky-300" />
                   {label}
                 </li>
