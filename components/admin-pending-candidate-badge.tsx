@@ -26,8 +26,10 @@ function getDatabaseErrorCode(error: unknown) {
 }
 
 function isRetryableDatabaseError(error: unknown) {
+  const errorCode = getDatabaseErrorCode(error);
   return (
-    RETRYABLE_DATABASE_ERROR_CODES.has(getDatabaseErrorCode(error)) ||
+    RETRYABLE_DATABASE_ERROR_CODES.has(errorCode) ||
+    errorCode === "INITIALIZATION" ||
     (error instanceof Prisma.PrismaClientInitializationError &&
       /can't reach database server/i.test(error.message))
   );

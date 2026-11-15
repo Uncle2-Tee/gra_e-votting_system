@@ -51,8 +51,13 @@ function isRetryableDatabaseConnectionFailure(error: unknown) {
       : error instanceof Prisma.PrismaClientInitializationError
         ? error.message.match(/\bP\d{4}\b/)?.[0] ?? error.errorCode
         : undefined;
+  const isUnclassifiedInitializationFailure =
+    error instanceof Prisma.PrismaClientInitializationError &&
+    !error.message.match(/\bP\d{4}\b/) &&
+    (!error.errorCode || error.errorCode === "UNEXPECTED");
   return (
     ["P1001", "P1002", "P1008", "P1017", "P2024"].includes(errorCode ?? "") ||
+    isUnclassifiedInitializationFailure ||
     (error instanceof Prisma.PrismaClientInitializationError &&
       /can't reach database server/i.test(error.message))
   );

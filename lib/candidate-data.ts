@@ -14,12 +14,15 @@ import type {
 } from "@/lib/candidate-types";
 
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
+  "P1001",
+  "INITIALIZATION",
   "P1002",
   "P1008",
   "P1017",
   "P2024",
 ]);
 const MAX_VOTER_PORTAL_DATABASE_ATTEMPTS = 4;
+const MAX_UNREACHABLE_DATABASE_ATTEMPTS = 2;
 
 function getDatabaseErrorCode(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -40,8 +43,14 @@ function getDatabaseErrorCode(error: unknown) {
     : "UNKNOWN";
 }
 
+function getMaxDatabaseAttempts(error: unknown) {
+  return getDatabaseErrorCode(error) === "P1001"
+    ? MAX_UNREACHABLE_DATABASE_ATTEMPTS
+    : MAX_VOTER_PORTAL_DATABASE_ATTEMPTS;
+}
+
 function isRetryableDatabaseError(error: unknown) {
-  // P1001 means the database host is unreachable; repeating every query only multiplies the wait.
+  // P1001 is retried once because each attempt fans out into several parallel queries.
   return RETRYABLE_DATABASE_ERROR_CODES.has(getDatabaseErrorCode(error));
 }
 
@@ -177,7 +186,7 @@ export async function getVoterPortalData(
       };
     } catch (error) {
       if (
-        attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 &&
+        attempt < getMaxDatabaseAttempts(error) - 1 &&
         isRetryableDatabaseError(error)
       ) {
         await delay(300 * (attempt + 1));
@@ -273,7 +282,7 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
         break;
       } catch (error) {
         if (
-          attempt === MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 ||
+          attempt >= getMaxDatabaseAttempts(error) - 1 ||
           !isRetryableDatabaseError(error)
         ) {
           throw error;
@@ -397,7 +406,7 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
       };
     } catch (error) {
       if (
-        attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 &&
+        attempt < getMaxDatabaseAttempts(error) - 1 &&
         isRetryableDatabaseError(error)
       ) {
         await delay(300 * (attempt + 1));
