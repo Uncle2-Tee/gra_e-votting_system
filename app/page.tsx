@@ -22,6 +22,14 @@ export default function HomePage() {
             backgroundSize: "56px 56px",
           }}
         />
+        <Image
+          src="/gra-hotsc-splash.png"
+          alt=""
+          width={768}
+          height={768}
+          loading="eager"
+          className="absolute left-1/2 top-1/2 size-[min(68vw,17rem)] -translate-x-1/2 -translate-y-1/2 rounded-full object-contain opacity-[0.04] mix-blend-screen md:hidden"
+        />
       </div>
 
       <div className="relative mx-auto flex min-h-dvh max-w-7xl flex-col px-5 sm:px-8 lg:px-12">
@@ -93,22 +101,6 @@ export default function HomePage() {
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
           >
-            <Image
-              src="/gra-hotsc-splash.png"
-              alt=""
-              width={768}
-              height={768}
-              loading="eager"
-              className="absolute bottom-6 left-3 size-[min(34vw,9rem)] rounded-full object-contain opacity-[0.08] mix-blend-screen md:hidden"
-            />
-            <Image
-              src="/gra-hotsc-splash.png"
-              alt=""
-              width={768}
-              height={768}
-              loading="eager"
-              className="absolute bottom-5 right-3 size-[min(38vw,10rem)] rounded-full object-contain opacity-[0.11] mix-blend-screen md:hidden"
-            />
             <div className="absolute right-0 top-1/2 hidden size-[min(70vh,30rem)] -translate-y-1/2 md:block lg:size-[min(76vh,34rem)] xl:size-[min(78vh,36rem)]">
               <Image
                 src="/gra-hotsc-splash.png"
