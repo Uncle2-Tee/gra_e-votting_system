@@ -1,4 +1,4 @@
-export const CANDIDATE_POSITION_OPTIONS = [] as const;
+export const CANDIDATE_POSITION_OPTIONS: readonly string[] = [];
 
 export const MAX_ELECTION_POSITIONS = 20;
 export const MAX_POSITION_TITLE_LENGTH = 100;

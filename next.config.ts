@@ -15,15 +15,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "6mb",
     },
   },
-  async redirects() {
-    return [
-      {
-        source: "/",
-        destination: "/vote/overview",
-        permanent: false,
-      },
-    ];
-  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
