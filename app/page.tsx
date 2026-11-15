@@ -28,21 +28,23 @@ export default function HomePage() {
           width={768}
           height={768}
           loading="eager"
-          className="absolute left-1/2 top-1/2 size-[min(68vw,17rem)] -translate-x-1/2 -translate-y-1/2 rounded-full object-contain opacity-[0.04] mix-blend-screen md:hidden"
+          className="absolute left-1/2 top-1/2 size-[min(68vw,17rem)] -translate-x-1/2 -translate-y-1/2 rounded-full object-contain opacity-[0.07] mix-blend-screen md:hidden"
         />
       </div>
 
       <div className="relative mx-auto flex min-h-dvh max-w-7xl flex-col px-5 sm:px-8 lg:px-12">
-        <header className="flex items-center border-b border-white/10 py-5">
-          <Link href="/" aria-label="GRA E-Voting home" className="group inline-flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-sm font-bold tracking-wide">
-              G<span className="text-yellow-300">R</span>A
-            </span>
-            <span>
-              <span className="block text-sm font-semibold tracking-wide">GRA E-Voting</span>
-              <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.2em] text-blue-100/60">
-                Ghana Revenue Authority
-              </span>
+        <header className="relative flex items-center border-b border-white/10 py-5">
+          <Link href="/" aria-label="Ghana Revenue Authority home" className="group inline-flex items-center gap-3">
+            <Image
+              src="/gra-hotsc-splash.png"
+              alt=""
+              width={768}
+              height={768}
+              priority
+              className="size-11 shrink-0 rounded-full object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+            />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-sm font-semibold tracking-wide md:static md:ml-0 md:translate-x-0 md:translate-y-0">
+              Ghana Revenue Authority
             </span>
           </Link>
         </header>
