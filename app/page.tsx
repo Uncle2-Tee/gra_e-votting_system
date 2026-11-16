@@ -65,7 +65,7 @@ export default function HomePage() {
               simple place.
             </p>
 
-            <div className="mt-6">
+            <div className="mt-6 md:mt-8">
               <Link
                 href="/vote/overview"
                 className="group inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-yellow-300 px-5 text-sm font-semibold text-[#082c49] shadow-lg shadow-yellow-950/20 transition hover:-translate-y-0.5 hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-200 sm:w-auto"
@@ -78,7 +78,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <ul className="mt-8 grid grid-cols-3 gap-2 text-xs text-blue-100/70 sm:mt-10 md:mt-16 md:flex md:flex-wrap md:gap-x-6 md:gap-y-3">
+            <ul className="mt-8 grid grid-cols-3 gap-2 text-xs text-blue-100/70 sm:mt-10 md:mt-20 md:flex md:flex-wrap md:gap-x-6 md:gap-y-3">
               {portalFeatures.map(({ icon: Icon, label }) => (
                 <li
                   key={label}
@@ -102,27 +102,7 @@ export default function HomePage() {
                 width={768}
                 height={768}
                 loading="eager"
-                className="absolute inset-0 size-full object-contain opacity-[0.2] mix-blend-screen"
-                style={{
-                  maskImage:
-                    "linear-gradient(to right, black 0%, black 42%, transparent 58%)",
-                  WebkitMaskImage:
-                    "linear-gradient(to right, black 0%, black 42%, transparent 58%)",
-                }}
-              />
-              <Image
-                src="/gra-hotsc-splash.png"
-                alt=""
-                width={768}
-                height={768}
-                loading="eager"
-                className="absolute inset-0 size-full object-contain drop-shadow-[0_24px_40px_rgba(0,0,0,0.3)]"
-                style={{
-                  maskImage:
-                    "linear-gradient(to right, transparent 42%, black 58%, black 100%)",
-                  WebkitMaskImage:
-                    "linear-gradient(to right, transparent 42%, black 58%, black 100%)",
-                }}
+                className="absolute inset-0 size-full object-contain opacity-[0.16] mix-blend-screen"
               />
             </div>
           </div>
