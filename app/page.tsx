@@ -22,14 +22,16 @@ export default function HomePage() {
             backgroundSize: "56px 56px",
           }}
         />
-        <Image
-          src="/gra-hotsc-splash.png"
-          alt=""
-          width={768}
-          height={768}
-          loading="eager"
-          className="absolute left-1/2 top-1/2 size-[min(68vw,17rem)] -translate-x-1/2 -translate-y-1/2 rounded-full object-contain opacity-[0.07] mix-blend-screen md:hidden"
-        />
+        <div className="absolute inset-0 grid place-items-center md:hidden">
+          <Image
+            src="/gra-hotsc-splash.png"
+            alt=""
+            width={768}
+            height={768}
+            loading="eager"
+            className="splash-watermark-mobile-pulse size-[min(68vw,17rem)] rounded-full object-contain opacity-[0.07] mix-blend-screen"
+          />
+        </div>
       </div>
 
       <div className="relative mx-auto flex min-h-dvh max-w-7xl flex-col px-5 sm:px-8 lg:px-12">
@@ -95,14 +97,14 @@ export default function HomePage() {
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
           >
-            <div className="absolute right-0 top-1/2 hidden size-[min(70vh,30rem)] -translate-y-1/2 md:block lg:size-[min(76vh,34rem)] xl:size-[min(78vh,36rem)]">
+            <div className="absolute right-6 top-[48%] hidden size-[min(70vh,30rem)] -translate-y-1/2 md:block lg:size-[min(76vh,34rem)] xl:size-[min(78vh,36rem)]">
               <Image
                 src="/gra-hotsc-splash.png"
                 alt=""
                 width={768}
                 height={768}
                 loading="eager"
-                className="absolute inset-0 size-full object-contain opacity-[0.16] mix-blend-screen"
+                className="splash-watermark-reveal absolute inset-0 size-full object-contain"
               />
             </div>
           </div>

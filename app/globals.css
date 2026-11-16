@@ -167,6 +167,40 @@
   }
 }
 
+.splash-watermark-reveal {
+  animation: splash-watermark-reveal 9s ease-in-out infinite;
+}
+
+@keyframes splash-watermark-reveal {
+  0%,
+  70%,
+  100% {
+    transform: scale(1);
+    opacity: 0.16;
+  }
+
+  30%,
+  45% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+.splash-watermark-mobile-pulse {
+  animation: splash-watermark-mobile-pulse 9s ease-in-out infinite;
+}
+
+@keyframes splash-watermark-mobile-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(1.1);
+  }
+}
+
 [data-dashboard-cards]
   :is(article, section, aside, form)[class*="rounded-"][class~="border"]:not(
     [class~="border-dashed"]
