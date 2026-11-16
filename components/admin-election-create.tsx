@@ -76,7 +76,7 @@ export default function AdminElectionCreate({
           <CalendarPlus2 className="size-5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-slate-900">Set up the next vote</h2>
+          <h2 className="text-base font-semibold text-slate-900 sm:text-sm">Set up the next vote</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
             Add positions first, then choose which ones to include when scheduling. New positions are selected by default.
           </p>
@@ -84,7 +84,7 @@ export default function AdminElectionCreate({
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <section aria-labelledby="create-election-positions">
+        <section aria-labelledby="create-election-positions" className="min-w-0">
           <h3 id="create-election-positions" className="text-xs font-semibold text-slate-800">
             Available positions
           </h3>
@@ -128,11 +128,11 @@ export default function AdminElectionCreate({
               </details>
             ) : null}
             {positionState.positions.length < MAX_ELECTION_POSITIONS ? (
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                 <input
                   aria-label="New position name"
                   name="customPosition"
-                  className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 disabled:bg-slate-50"
+                  className="h-11 w-full min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15 disabled:bg-slate-50"
                   maxLength={MAX_POSITION_TITLE_LENGTH}
                   placeholder="Or enter a new position"
                   disabled={addingPosition || positionsScheduled}
@@ -144,7 +144,7 @@ export default function AdminElectionCreate({
                     positionsScheduled ||
                     positionState.positions.length >= MAX_ELECTION_POSITIONS
                   }
-                  className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-800/20 bg-white px-4 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-800/20 bg-white px-4 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   <Plus className="size-3.5" />
                   {addingPosition ? "Adding…" : "Add positions"}
@@ -174,7 +174,10 @@ export default function AdminElectionCreate({
           ) : null}
         </section>
 
-        <section aria-labelledby="schedule-election-voting">
+        <section
+          aria-labelledby="schedule-election-voting"
+          className="min-w-0 border-t border-slate-100 pt-5 lg:border-t-0 lg:pt-0"
+        >
           <h3 id="schedule-election-voting" className="text-xs font-semibold text-slate-800">
             Schedule voting
           </h3>
@@ -197,7 +200,7 @@ export default function AdminElectionCreate({
                   value={position.id}
                 />
               ))}
-            <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-4">
+            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <label className="min-w-0 text-[11px] font-medium text-slate-700 sm:text-xs">
                 Voting opens
                 <input
@@ -222,7 +225,7 @@ export default function AdminElectionCreate({
               </label>
               <p
                 id="election-date-format-help"
-                className="col-span-2 text-[11px] font-normal leading-4 text-slate-500"
+                className="text-[11px] font-normal leading-4 text-slate-500 sm:col-span-2"
               >
                 Date format follows your device settings{dateFormatExample ? ` (example: ${dateFormatExample})` : ""}.
               </p>
@@ -244,7 +247,7 @@ export default function AdminElectionCreate({
                 !positionState.electionId ||
                 positionState.positions.length === 0
               }
-              className="mt-4 inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-emerald-700 px-4 text-xs font-semibold text-white transition-colors hover:bg-emerald-800 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 disabled:opacity-100"
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-emerald-700 px-4 text-xs font-semibold text-white transition-colors hover:bg-emerald-800 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 disabled:opacity-100 sm:w-auto"
             >
               <CalendarPlus2 className="size-4" />
               {scheduling ? "Scheduling…" : "Schedule vote"}
