@@ -43,7 +43,7 @@ export default function HomePage() {
               priority
               className="size-11 shrink-0 rounded-full object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
             />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-sm font-semibold tracking-wide md:static md:ml-0 md:translate-x-0 md:translate-y-0">
+            <span className="absolute left-[52%] top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-sm font-semibold tracking-wide md:static md:ml-0 md:translate-x-0 md:translate-y-0">
               Ghana Revenue Authority
             </span>
           </Link>
