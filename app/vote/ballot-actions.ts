@@ -10,8 +10,8 @@ import {
   createVoterStaffNumberLookupHash,
   decryptVoterField,
   encryptVoterField,
+  normalizeVoterName,
   normalizeVoterStaffNumber,
-  normalizePhoneNumber,
 } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
 import { getVoterCredentialCookieName } from "@/lib/voter-ballot-session";
@@ -38,29 +38,6 @@ function validId(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function ghanaMobileSubscriberNumber(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (/^\d{9}$/.test(digits)) {
-    return digits;
-  }
-  if (/^0\d{9}$/.test(digits)) {
-    return digits.slice(1);
-  }
-  if (/^233\d{9}$/.test(digits)) {
-    return digits.slice(3);
-  }
-  return null;
-}
-
-function voterPhoneMatches(submittedPhone: string, rosterPhone: string) {
-  const submittedGhanaNumber = ghanaMobileSubscriberNumber(submittedPhone);
-  const rosterGhanaNumber = ghanaMobileSubscriberNumber(rosterPhone);
-  if (submittedGhanaNumber && rosterGhanaNumber) {
-    return submittedGhanaNumber === rosterGhanaNumber;
-  }
-  return normalizePhoneNumber(submittedPhone) === normalizePhoneNumber(rosterPhone);
-}
-
 export async function requestVoterId(
   _previousState: VoterActionState,
   formData: FormData,
@@ -70,15 +47,14 @@ export async function requestVoterId(
   }
 
   const electionId = readText(formData, "electionId");
+  const name = normalizeVoterName(readText(formData, "name"));
   const staffNumber = normalizeVoterStaffNumber(readText(formData, "staffNumber"));
-  const phone = readText(formData, "phone");
-  const phoneDigits = phone.replace(/\D/g, "");
 
   if (!validId(electionId) || !staffNumber.trim() || staffNumber.length > 80) {
-    return { ...INITIAL_STATE, error: "Enter a valid staff number and select an election." };
+    return { ...INITIAL_STATE, error: "Enter your name and a valid staff number, then select an election." };
   }
-  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
-    return { ...INITIAL_STATE, error: "Enter a valid phone number." };
+  if (!name || name.length > 150) {
+    return { ...INITIAL_STATE, error: "Enter a valid name." };
   }
   const now = new Date();
   let issueResult:
@@ -91,7 +67,7 @@ export async function requestVoterId(
     issueResult = await prisma.$transaction(async (transaction) => {
       const matchedRows = await transaction.$queryRaw<{
         id: string;
-        phoneCiphertext: string | null;
+        nameCiphertext: string;
         startsAt: Date | null;
         endsAt: Date | null;
         electionStatus: string;
@@ -103,7 +79,7 @@ export async function requestVoterId(
       }[]>`
         SELECT
           ev."id",
-          v."phoneCiphertext",
+          v."nameCiphertext",
           e."startsAt",
           e."endsAt",
           e."status" AS "electionStatus",
@@ -124,7 +100,7 @@ export async function requestVoterId(
       const matched = matchedRows[0];
       if (
         !matched ||
-        !matched.phoneCiphertext ||
+        !matched.nameCiphertext ||
         !matched.startsAt ||
         !matched.endsAt ||
         matched.startsAt > now ||
@@ -133,8 +109,8 @@ export async function requestVoterId(
       ) {
         return { status: "unavailable" as const };
       }
-      const rosterPhone = decryptVoterField(matched.phoneCiphertext, "voter-phone");
-      if (!voterPhoneMatches(phone, rosterPhone)) {
+      const rosterName = decryptVoterField(matched.nameCiphertext, "voter-name");
+      if (normalizeVoterName(rosterName) !== name) {
         return { status: "unavailable" as const };
       }
 
