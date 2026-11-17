@@ -16,7 +16,6 @@ import {
 import { ELECTION_TIMEZONE } from "@/lib/election-timezone";
 import {
   hasValidPositionNames,
-  MAX_ELECTION_POSITIONS,
   MAX_POSITION_TITLE_LENGTH,
 } from "@/lib/candidate-positions";
 import { prisma } from "@/lib/prisma";
@@ -30,15 +29,6 @@ export type UpdateElectionScheduleState = ElectionActionState;
 export type AddElectionPositionsState = ElectionActionState;
 export type RemoveElectionPositionState = ElectionActionState;
 export type DeleteElectionState = ElectionActionState;
-export type AddDraftElectionPositionState = ElectionActionState & {
-  electionId: string | null;
-  positions: {
-    id: string;
-    title: string;
-    includedInElection: boolean;
-  }[];
-};
-
 const INITIAL_STATE: ElectionActionState = { error: null, success: null };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHUNK_SIZE = 500;
@@ -100,17 +90,10 @@ async function retryDatabaseConnection<T>(operation: () => Promise<T>) {
   throw new Error("Database retry attempts ended unexpectedly.");
 }
 
-export async function addDraftElectionPosition(
-  previousState: AddDraftElectionPositionState,
+export async function scheduleNewElection(
+  _previousState: UpdateElectionScheduleState,
   formData: FormData,
-): Promise<AddDraftElectionPositionState> {
-  const withError = (error: string, electionId = previousState.electionId) => ({
-    ...previousState,
-    error,
-    success: null,
-    electionId,
-  });
-
+): Promise<UpdateElectionScheduleState> {
   let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
   try {
     admin = await getCurrentAdmin();
@@ -118,243 +101,147 @@ export async function addDraftElectionPosition(
     if (!isAdminDatabaseUnavailableError(error)) {
       throw error;
     }
-    return withError(
-      "Positions cannot be added right now because the database is unavailable.",
-    );
+    return {
+      ...INITIAL_STATE,
+      error: "An election cannot be scheduled right now because the database is unavailable.",
+    };
   }
 
   if (!admin) {
     redirect("/admin/login");
   }
   if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
-    return withError("You are not authorized to configure election positions.");
+    return { ...INITIAL_STATE, error: "You are not authorized to schedule elections." };
   }
 
-  const rawStandardPositions = formData.getAll("standardPositions");
-  const standardPositions = rawStandardPositions
-    .filter((position): position is string => typeof position === "string")
-    .map((position) => position.trim().normalize("NFKC"));
-  const customPosition = readText(formData, "customPosition").normalize("NFKC");
-  const positionNames = [
-    ...standardPositions,
-    ...(customPosition ? [customPosition] : []),
-  ];
-  const electionIdValue = readText(formData, "electionId");
-  if (standardPositions.length !== rawStandardPositions.length) {
-    return withError(
-      "Select valid positions and try again.",
-      electionIdValue || previousState.electionId,
-    );
+  const rawPositionTemplateIds = formData.getAll("positionTemplateIds");
+  const positionTemplateIds = rawPositionTemplateIds.filter(
+    (value): value is string => typeof value === "string",
+  );
+  const uniquePositionTemplateIds = [...new Set(positionTemplateIds)];
+  if (
+    positionTemplateIds.length !== rawPositionTemplateIds.length ||
+    uniquePositionTemplateIds.length !== positionTemplateIds.length ||
+    uniquePositionTemplateIds.some((id) => !UUID_PATTERN.test(id))
+  ) {
+    return {
+      ...INITIAL_STATE,
+      error: "One or more selected positions are invalid. Refresh and try again.",
+    };
   }
-  if (positionNames.length === 0) {
-    return withError(
-      "Choose at least one standard position or enter a custom position.",
-      electionIdValue || previousState.electionId,
-    );
+  if (uniquePositionTemplateIds.length === 0) {
+    return {
+      ...INITIAL_STATE,
+      error: "Select at least one position for this election.",
+    };
   }
-  if (!hasValidPositionNames(positionNames)) {
-    return withError(
-      `Choose unique position names. Custom names must be 1 to ${MAX_POSITION_TITLE_LENGTH} characters.`,
-      electionIdValue || previousState.electionId,
-    );
+
+  const startsAt = parseElectionDateTime(
+    readText(formData, "startsAt"),
+    ELECTION_TIMEZONE,
+  );
+  const endsAt = parseElectionDateTime(
+    readText(formData, "endsAt"),
+    ELECTION_TIMEZONE,
+  );
+  const now = new Date();
+  if (!startsAt || !endsAt) {
+    return { ...INITIAL_STATE, error: "Enter valid voting opening and closing times." };
   }
-  if (electionIdValue && !UUID_PATTERN.test(electionIdValue)) {
-    return withError("The draft election is invalid. Refresh and try again.");
+  if (startsAt <= now) {
+    return { ...INITIAL_STATE, error: "The voting opening time must be in the future." };
+  }
+  if (endsAt <= startsAt) {
+    return { ...INITIAL_STATE, error: "The voting closing time must be after its opening time." };
   }
 
   try {
-    const saved = await retryDatabaseConnection(() =>
+    const result = await retryDatabaseConnection(() =>
       prisma.$transaction(async (transaction) => {
-      let electionId = electionIdValue;
-      if (!electionId) {
-        await transaction.$queryRaw`
-          SELECT pg_advisory_xact_lock(604218731)::text AS lock_result
-        `;
-        const [existingDraft] = await transaction.$queryRaw<{ id: string }[]>`
-          SELECT "id"
-          FROM "Election"
-          WHERE "createdById" = ${admin.id}::uuid
-            AND "status" = 'DRAFT'::"ElectionStatus"
-            AND "startsAt" IS NULL
-            AND "endsAt" IS NULL
-            AND "title" LIKE 'GRA Election - Candidate Applications %'
-          ORDER BY "createdAt" DESC
-          LIMIT 1
-          FOR UPDATE
-        `;
-        if (existingDraft) {
-          electionId = existingDraft.id;
-        } else {
-          const now = new Date();
-          const cycleLabel = new Intl.DateTimeFormat("en", {
-            timeZone: ELECTION_TIMEZONE,
-            dateStyle: "medium",
-            timeStyle: "short",
-          }).format(now);
-          const election = await transaction.election.create({
-            data: {
-              title: `GRA Election - Candidate Applications ${cycleLabel}`,
-              timezone: ELECTION_TIMEZONE,
-              status: "DRAFT",
-              createdById: admin.id,
-            },
-            select: { id: true },
-          });
-          electionId = election.id;
-          await transaction.auditLog.create({
-            data: {
-              actorId: admin.id,
-              action: "ELECTION_CREATED",
-              entityType: "ELECTION",
-              entityId: electionId,
-              outcome: "DRAFT",
-              metadata: { candidateApplicationsOnly: true },
-            },
-          });
-        }
-      } else {
-        const [election] = await transaction.$queryRaw<{
-          id: string;
-          status: ElectionStatus;
-          startsAt: Date | null;
-          endsAt: Date | null;
-        }[]>`
-          SELECT "id", "status", "startsAt", "endsAt"
-          FROM "Election"
-          WHERE "id" = ${electionId}::uuid
-          FOR UPDATE
-        `;
-        if (!election) {
-          return { error: "The draft election could not be found." as const };
-        }
-        if (
-          election.status !== "DRAFT" ||
-          election.startsAt !== null ||
-          election.endsAt !== null
-        ) {
+        const positionTemplates = await transaction.positionTemplate.findMany({
+          where: { id: { in: uniquePositionTemplateIds } },
+          orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
+          select: { id: true, title: true },
+        });
+        if (positionTemplates.length !== uniquePositionTemplateIds.length) {
           return {
-            error: "This election is already scheduled. Add positions from its Voting setup card instead." as const,
-          };
+            error: "One or more selected positions could not be found. Refresh and try again.",
+          } as const;
         }
-      }
 
-      const existingPositions = await transaction.position.findMany({
-        where: { electionId },
-        orderBy: { displayOrder: "asc" },
-        select: {
-          id: true,
-          title: true,
-          displayOrder: true,
-          includedInElection: true,
-        },
-      });
-      if (existingPositions.length + positionNames.length > MAX_ELECTION_POSITIONS) {
-        return {
-          error: `An election can have at most ${MAX_ELECTION_POSITIONS} positions.` as const,
-          electionId,
-          positions: existingPositions.map(
-            ({ id, title, includedInElection }) => ({
-              id,
-              title,
-              includedInElection,
-            }),
-          ),
-        };
-      }
-      if (
-        positionNames.some((positionName) =>
-          existingPositions.some(
-            (position) =>
-              position.title.toLocaleLowerCase("en") ===
-              positionName.toLocaleLowerCase("en"),
-          ),
-        )
-      ) {
-        return {
-          error: "One or more selected positions have already been added." as const,
-          electionId,
-          positions: existingPositions.map(
-            ({ id, title, includedInElection }) => ({
-              id,
-              title,
-              includedInElection,
-            }),
-          ),
-        };
-      }
+        const cycleLabel = new Intl.DateTimeFormat("en", {
+          timeZone: ELECTION_TIMEZONE,
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(now);
+        const election = await transaction.election.create({
+          data: {
+            title: `GRA Election - ${cycleLabel}`,
+            timezone: ELECTION_TIMEZONE,
+            status: "SCHEDULED",
+            startsAt,
+            endsAt,
+            createdById: admin.id,
+            positions: {
+              create: positionTemplates.map(({ title }, displayOrder) => ({
+                title,
+                displayOrder,
+              })),
+            },
+          },
+          select: { id: true, title: true },
+        });
 
-      await transaction.position.createMany({
-        data: positionNames.map((title, index) => ({
-          electionId,
-          title,
-          displayOrder: existingPositions.length + index,
-        })),
-      });
-      await transaction.auditLog.create({
-        data: {
-          actorId: admin.id,
-          action: "ELECTION_POSITIONS_ADDED",
-          entityType: "ELECTION",
-          entityId: electionId,
-          outcome: "UPDATED",
-          metadata: { positions: positionNames },
-        },
-      });
+        const activeVoters = await transaction.voter.findMany({
+          where: { status: "ACTIVE" },
+          select: { id: true },
+        });
+        for (const batch of chunks(activeVoters, CHUNK_SIZE)) {
+          await transaction.electionVoter.createMany({
+            data: batch.map(({ id }) => ({
+              electionId: election.id,
+              voterId: id,
+              status: "ELIGIBLE",
+            })),
+            skipDuplicates: true,
+          });
+        }
 
-      const positions = await transaction.position.findMany({
-        where: { electionId },
-        orderBy: { displayOrder: "asc" },
-        select: { id: true, title: true, includedInElection: true },
-      });
-      return { electionId, positions };
+        await transaction.auditLog.create({
+          data: {
+            actorId: admin.id,
+            action: "ELECTION_CREATED",
+            entityType: "ELECTION",
+            entityId: election.id,
+            outcome: "SCHEDULED",
+            metadata: {
+              timezone: ELECTION_TIMEZONE,
+              startsAt: startsAt.toISOString(),
+              endsAt: endsAt.toISOString(),
+              positions: positionTemplates.map(({ title }) => title),
+            },
+          },
+        });
+
+        return { election };
       }, { maxWait: 15_000, timeout: 60_000 }),
     );
 
-    if (typeof saved.error === "string") {
-      return {
-        ...previousState,
-        error: saved.error,
-        success: null,
-        electionId:
-          "electionId" in saved && typeof saved.electionId === "string"
-            ? saved.electionId
-            : electionIdValue || previousState.electionId,
-        positions:
-          "positions" in saved && Array.isArray(saved.positions)
-            ? saved.positions
-            : previousState.positions,
-      };
+    if ("error" in result && typeof result.error === "string") {
+      return { ...INITIAL_STATE, error: result.error };
     }
 
     revalidateElectionSchedule();
     return {
       error: null,
-      success:
-        positionNames.length === 1
-          ? `"${positionNames[0]}" is now available on the voter candidate application form.`
-          : `${positionNames.length} positions are now available on the voter candidate application form.`,
-      electionId: saved.electionId,
-      positions: saved.positions,
+      success: `“${result.election.title}” scheduled. Voting opens ${startsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })} and closes ${endsAt.toLocaleString("en", { timeZone: ELECTION_TIMEZONE, dateStyle: "medium", timeStyle: "short" })}. (${ELECTION_TIMEZONE})`,
     };
   } catch (error) {
-    logElectionActionFailure("Draft election position addition failed.", error);
-    if (isRetryableDatabaseConnectionFailure(error)) {
-      return withError(
-        "The database connection is temporarily unavailable. Please try adding the position again in a moment.",
-        electionIdValue || previousState.electionId,
-      );
-    }
-    const errorCode = getElectionActionErrorCode(error);
-    if (errorCode !== "UNKNOWN") {
-      return withError(
-        `The position could not be added (database error ${errorCode}). Please refresh and try again.`,
-        electionIdValue || previousState.electionId,
-      );
-    }
-    return withError(
-      "An unexpected server error prevented the position from being saved. Refresh the page and try again.",
-      electionIdValue || previousState.electionId,
-    );
+    logElectionActionFailure("Election creation failed.", error);
+    return {
+      ...INITIAL_STATE,
+      error: "The election could not be scheduled. Please try again.",
+    };
   }
 }
 
@@ -395,7 +282,7 @@ export async function addElectionPositions(
   ) {
     return {
       ...INITIAL_STATE,
-      error: `Enter 1 to ${MAX_ELECTION_POSITIONS} unique position names, each ${MAX_POSITION_TITLE_LENGTH} characters or fewer.`,
+      error: `Enter one or more unique position names, each ${MAX_POSITION_TITLE_LENGTH} characters or fewer.`,
     };
   }
 
@@ -424,13 +311,6 @@ export async function addElectionPositions(
         where: { electionId },
         select: { title: true, displayOrder: true },
       });
-      if (existingPositions.length + positions.length > MAX_ELECTION_POSITIONS) {
-        return {
-          added: 0,
-          error: `An election can have at most ${MAX_ELECTION_POSITIONS} positions.`,
-        };
-      }
-
       const existingNames = new Set(
         existingPositions.map(({ title }) => title.toLocaleLowerCase("en")),
       );
@@ -457,6 +337,27 @@ export async function addElectionPositions(
           displayOrder: nextDisplayOrder + index,
         })),
       });
+      await transaction.$queryRaw`
+        SELECT pg_advisory_xact_lock(604218731)::text AS lock_result
+      `;
+      const positionTemplates = await transaction.positionTemplate.findMany({
+        orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
+        select: { title: true, displayOrder: true },
+      });
+      const knownPositionNames = new Set(
+        positionTemplates.map(({ title }) => title.toLocaleLowerCase("en")),
+      );
+      const newPositionTemplates = positions
+        .filter((title) => !knownPositionNames.has(title.toLocaleLowerCase("en")))
+        .map((title, index) => ({
+          title,
+          displayOrder: positionTemplates.length + index,
+        }));
+      if (newPositionTemplates.length > 0) {
+        await transaction.positionTemplate.createMany({
+          data: newPositionTemplates,
+        });
+      }
       await transaction.auditLog.create({
         data: {
           actorId: admin.id,

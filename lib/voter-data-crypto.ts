@@ -36,6 +36,10 @@ export function normalizeVoterName(name: string) {
   return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
 }
 
+export function normalizeVoterStaffNumber(staffNumber: string) {
+  return staffNumber.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleUpperCase("en");
+}
+
 export function normalizePhoneNumber(phone: string) {
   const normalized = phone.trim().replace(/[\s().-]/g, "");
   return /^\d{9}$/.test(normalized) ? `0${normalized}` : normalized;
@@ -81,7 +85,13 @@ export function createVoterIdentityLookupHash(name: string, phone: string) {
     .digest("hex");
 }
 
-export function createVoterNameLookupHash(name: string) {
+export function createVoterStaffNumberLookupHash(staffNumber: string) {
+  return createHmac("sha256", deriveKey("staff-number-lookup"))
+    .update(normalizeVoterStaffNumber(staffNumber), "utf8")
+    .digest("hex");
+}
+
+export function createLegacyVoterNameLookupHash(name: string) {
   return createHmac("sha256", deriveKey("identity-lookup"))
     .update(JSON.stringify([normalizeVoterName(name)]), "utf8")
     .digest("hex");

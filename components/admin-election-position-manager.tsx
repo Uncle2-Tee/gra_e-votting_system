@@ -9,7 +9,6 @@ import {
   type RemoveElectionPositionState,
 } from "@/app/admin/elections/actions";
 import CandidatePositionPicker from "@/components/candidate-position-picker";
-import { MAX_ELECTION_POSITIONS } from "@/lib/candidate-positions";
 import { getPositionColors } from "@/lib/position-colors";
 
 const INITIAL_STATE: AddElectionPositionsState = { error: null, success: null };
@@ -71,6 +70,8 @@ export default function AdminElectionPositionManager({
   );
   const [newPositions, setNewPositions] = useState<string[]>([]);
   const canEditPositions = ["DRAFT", "SCHEDULED", "PUBLISHED"].includes(election.status);
+  const canAddPositions =
+    canEditPositions && election.status !== "DRAFT";
   return (
     <details className="mt-2">
       <summary className="w-fit cursor-pointer list-none rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">
@@ -114,7 +115,7 @@ export default function AdminElectionPositionManager({
           <p className="mt-1 text-[11px] text-slate-500">No positions have been added.</p>
         )}
 
-        {canEditPositions && election.positions.length < MAX_ELECTION_POSITIONS ? (
+        {canAddPositions ? (
           <form action={action} className="mt-4 space-y-2">
             <label htmlFor={`custom-position-${election.id}`} className="text-[11px] font-semibold text-slate-700">
               Add positions
@@ -144,15 +145,11 @@ export default function AdminElectionPositionManager({
               {pending ? "Adding positions…" : "Save positions"}
             </button>
           </form>
-        ) : canEditPositions ? (
-          <p className="mt-3 text-[11px] text-slate-500">
-            This election has reached the {MAX_ELECTION_POSITIONS}-position limit.
-          </p>
-        ) : (
+        ) : !canEditPositions ? (
           <p className="mt-3 text-[11px] text-slate-500">
             Positions cannot be changed after voting opens.
           </p>
-        )}
+        ) : null}
       </div>
     </details>
   );

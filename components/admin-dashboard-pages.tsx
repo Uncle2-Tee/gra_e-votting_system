@@ -76,16 +76,6 @@ export function AdminElectionsPage({
 }: {
   schedules: AdminElectionSchedules;
 }) {
-  const draftElection =
-    schedules.databaseStatus === "connected"
-      ? schedules.elections.find(
-          (election) =>
-            election.status === "DRAFT" &&
-            election.startsAt === null &&
-            election.endsAt === null &&
-            election.title.startsWith("GRA Election - Candidate Applications "),
-        )
-      : undefined;
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 sm:py-9">
       <PageHeading
@@ -93,13 +83,10 @@ export function AdminElectionsPage({
         title="Voting setup"
       />
       <AdminElectionCreate
-        initialDraft={
-          draftElection
-            ? {
-                electionId: draftElection.id,
-                positions: draftElection.positions,
-              }
-            : null
+        initialPositionTemplates={
+          schedules.databaseStatus === "connected"
+            ? schedules.positionTemplates
+            : []
         }
       />
       <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">

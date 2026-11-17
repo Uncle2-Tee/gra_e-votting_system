@@ -37,6 +37,11 @@ export type AdminOverview = {
 
 export type AdminElectionSchedules = {
   databaseStatus: "connected";
+  positionTemplates: {
+    id: string;
+    title: string;
+    displayOrder: number;
+  }[];
   elections: {
     id: string;
     title: string;
@@ -52,6 +57,7 @@ export type AdminElectionSchedules = {
   }[];
 } | {
   databaseStatus: "unavailable";
+  positionTemplates: [];
   elections: [];
 };
 
@@ -59,24 +65,31 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
   await connection();
 
   try {
-    const elections = await prisma.election.findMany({
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        startsAt: true,
-        endsAt: true,
-        timezone: true,
-        positions: {
-          orderBy: { displayOrder: "asc" },
-          select: { id: true, title: true, includedInElection: true },
+    const [elections, positionTemplates] = await Promise.all([
+      prisma.election.findMany({
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          startsAt: true,
+          endsAt: true,
+          timezone: true,
+          positions: {
+            orderBy: { displayOrder: "asc" },
+            select: { id: true, title: true, includedInElection: true },
+          },
         },
-      },
-    });
+      }),
+      prisma.positionTemplate.findMany({
+        orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
+        select: { id: true, title: true, displayOrder: true },
+      }),
+    ]);
 
     return {
       databaseStatus: "connected",
+      positionTemplates,
       elections: elections.map((election) => ({
         ...election,
         status: getEffectiveElectionStatus(election),
@@ -95,7 +108,11 @@ export async function getAdminElectionSchedules(): Promise<AdminElectionSchedule
         ? ` (${error.code})`
         : "";
     console.warn(`Failed to load administrator election schedules: ${errorName}${errorCode}`);
-    return { databaseStatus: "unavailable", elections: [] };
+    return {
+      databaseStatus: "unavailable",
+      positionTemplates: [],
+      elections: [],
+    };
   }
 }
 

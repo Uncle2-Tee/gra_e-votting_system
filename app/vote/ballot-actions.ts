@@ -7,9 +7,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   createVoterCredentialDigest,
-  createVoterNameLookupHash,
+  createVoterStaffNumberLookupHash,
   decryptVoterField,
   encryptVoterField,
+  normalizeVoterStaffNumber,
   normalizePhoneNumber,
 } from "@/lib/voter-data-crypto";
 import { prisma } from "@/lib/prisma";
@@ -69,12 +70,12 @@ export async function requestVoterId(
   }
 
   const electionId = readText(formData, "electionId");
-  const name = readText(formData, "name").normalize("NFKC");
+  const staffNumber = normalizeVoterStaffNumber(readText(formData, "staffNumber"));
   const phone = readText(formData, "phone");
   const phoneDigits = phone.replace(/\D/g, "");
 
-  if (!validId(electionId) || name.length < 2 || name.length > 150) {
-    return { ...INITIAL_STATE, error: "Enter a valid name and select an election." };
+  if (!validId(electionId) || !staffNumber.trim() || staffNumber.length > 80) {
+    return { ...INITIAL_STATE, error: "Enter a valid staff number and select an election." };
   }
   if (phoneDigits.length < 7 || phoneDigits.length > 15) {
     return { ...INITIAL_STATE, error: "Enter a valid phone number." };
@@ -117,7 +118,7 @@ export async function requestVoterId(
         WHERE ev."electionId" = ${electionId}::uuid
           AND ev."status" = 'ELIGIBLE'::"EligibilityStatus"
           AND v."status" = 'ACTIVE'::"AccountStatus"
-          AND v."identificationLookupHash" = ${createVoterNameLookupHash(name)}
+          AND v."identificationLookupHash" = ${createVoterStaffNumberLookupHash(staffNumber)}
         FOR UPDATE OF ev
       `;
       const matched = matchedRows[0];

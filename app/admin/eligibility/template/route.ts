@@ -24,9 +24,11 @@ export async function GET(request: Request) {
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Eligible voters");
-  worksheet.addRow(["Name", "Phone Number"]);
+  worksheet.addRow(["Staff number", "Name", "Contact"]);
   worksheet.getRow(1).font = { bold: true };
-  worksheet.columns = [{ width: 36 }, { width: 24 }];
+  worksheet.columns = [{ width: 22 }, { width: 36 }, { width: 24 }];
+  worksheet.getColumn(1).numFmt = "@";
+  worksheet.getColumn(3).numFmt = "@";
 
   const bytes = await workbook.xlsx.writeBuffer();
   return new NextResponse(bytes, {

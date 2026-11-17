@@ -131,6 +131,16 @@ model Election {
   @@index([status, startsAt, endsAt])
 }
 
+model PositionTemplate {
+  id           String   @id @default(uuid()) @db.Uuid
+  title        String
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([displayOrder])
+}
+
 // ==========================================
 // ELECTION VOTER ELIGIBILITY
 // ==========================================

@@ -1,7 +1,8 @@
 import ExcelJS from "exceljs";
 import {
-  createVoterNameLookupHash,
+  createVoterStaffNumberLookupHash,
   createVoterPhoneLookupHash,
+  normalizeVoterStaffNumber,
   normalizePhoneNumber,
 } from "@/lib/voter-data-crypto";
 import type { EligibilityImportRowResult } from "@/lib/eligibility-import-types";
@@ -45,20 +46,26 @@ function resolveHeaders(worksheet: ExcelJS.Worksheet) {
 
   const findColumn = (aliases: string[]) =>
     aliases.map((alias) => headers.get(alias)).find((column) => column !== undefined);
+  const staffNumber = findColumn(["staffnumber", "staffno", "staffid", "employeeid"]);
   const name = findColumn(["name", "fullname", "votername"]);
-  const phone = findColumn(["phone", "phonenumber", "mobile", "mobilenumber"]);
+  const contact = findColumn(["contact", "contactnumber", "phone", "phonenumber", "mobile", "mobilenumber"]);
+  if (!staffNumber) {
+    throw new EligibilitySpreadsheetError(
+      "The first row must include a Staff number column.",
+    );
+  }
   if (!name) {
     throw new EligibilitySpreadsheetError(
       "The first row must include a Name column.",
     );
   }
-  if (!phone) {
+  if (!contact) {
     throw new EligibilitySpreadsheetError(
-      "The first row must include a Phone column.",
+      "The first row must include a Contact column.",
     );
   }
 
-  return { name, phone };
+  return { staffNumber, name, contact };
 }
 
 function cellValue(worksheet: ExcelJS.Worksheet, row: number, column?: number) {
@@ -81,25 +88,27 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet || worksheet.rowCount < 2) {
-    throw new EligibilitySpreadsheetError("The worksheet must contain a header and at least one voter row.");
+    throw new EligibilitySpreadsheetError("The worksheet must contain a header and at least one staff row.");
   }
   if (worksheet.rowCount > MAX_IMPORT_ROWS + 1) {
-    throw new EligibilitySpreadsheetError(`The workbook cannot contain more than ${MAX_IMPORT_ROWS} voter rows.`);
+    throw new EligibilitySpreadsheetError(`The workbook cannot contain more than ${MAX_IMPORT_ROWS} staff rows.`);
   }
 
   const columns = resolveHeaders(worksheet);
-  const seenIdentities = new Set<string>();
+  const seenStaffNumbers = new Set<string>();
   const seenPhoneNumbers = new Set<string>();
   const rows: EligibilityImportRowResult[] = [];
 
   for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const rowErrors: string[] = [];
+    let staffNumber = "";
     let name = "";
     let phone = "";
 
     try {
+      staffNumber = cellValue(worksheet, rowNumber, columns.staffNumber);
       name = cellValue(worksheet, rowNumber, columns.name);
-      phone = cellValue(worksheet, rowNumber, columns.phone);
+      phone = cellValue(worksheet, rowNumber, columns.contact);
     } catch (error) {
       if (error instanceof EligibilitySpreadsheetError) {
         rowErrors.push("unsupported_cell_value");
@@ -108,11 +117,15 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
       }
     }
 
-    if (!name && !phone && rowErrors.length === 0) {
+    if (!staffNumber && !name && !phone && rowErrors.length === 0) {
       rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["empty_row"] });
       continue;
     }
 
+    const normalizedStaffNumber = normalizeVoterStaffNumber(staffNumber);
+    if (!normalizedStaffNumber || normalizedStaffNumber.length > 80) {
+      rowErrors.push("invalid_staff_number");
+    }
     if (!name || name.length > 150) {
       rowErrors.push("invalid_name");
     }
@@ -131,25 +144,26 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
       continue;
     }
 
-    const lookupHash = createVoterNameLookupHash(name);
+    const staffNumberLookupHash = createVoterStaffNumberLookupHash(normalizedStaffNumber);
     const phoneLookupHash = createVoterPhoneLookupHash(normalizedPhone);
-    if (seenIdentities.has(lookupHash)) {
-      rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["duplicate_in_upload"] });
+    if (seenStaffNumbers.has(staffNumberLookupHash)) {
+      rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["duplicate_staff_number_in_upload"] });
       continue;
     }
     if (seenPhoneNumbers.has(phoneLookupHash)) {
       rows.push({ rowNumber, status: "REJECTED", errorCodes: ["duplicate_phone_in_upload"] });
       continue;
     }
-    seenIdentities.add(lookupHash);
+    seenStaffNumbers.add(staffNumberLookupHash);
     seenPhoneNumbers.add(phoneLookupHash);
     rows.push({
       rowNumber,
       status: "ACCEPTED",
       errorCodes: [],
       voter: {
+        staffNumber: normalizedStaffNumber,
+        staffNumberLookupHash,
         name: name.normalize("NFKC").trim().replace(/\s+/g, " "),
-        lookupHash,
         phone: normalizedPhone,
         phoneLookupHash,
       },

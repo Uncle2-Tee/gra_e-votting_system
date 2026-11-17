@@ -170,7 +170,7 @@ export default function VoterEntryPage({
               <div>
                 <h2 className="text-base font-semibold text-slate-950">Confirm your voter details</h2>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Enter your name and phone number exactly as recorded in the eligible voter roster.
+                  Enter your staff number and contact number as recorded in the eligible voter roster.
                 </p>
               </div>
 
@@ -193,19 +193,18 @@ export default function VoterEntryPage({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block text-xs font-medium text-slate-700">
-                  Full name as listed in the roster
+                  Staff number
                   <input
-                    name="name"
-                    autoComplete="name"
+                    name="staffNumber"
+                    autoComplete="off"
                     required
-                    minLength={2}
-                    maxLength={150}
-                    placeholder="e.g. Ama Mensah"
+                    maxLength={80}
+                    placeholder="Enter your staff number"
                     className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
                   />
                 </label>
                 <label className="block text-xs font-medium text-slate-700">
-                  Phone number in the roster
+                  Contact number
                   <input
                     name="phone"
                     type="tel"
@@ -213,7 +212,7 @@ export default function VoterEntryPage({
                     required
                     minLength={7}
                     maxLength={32}
-                    placeholder="e.g. +233 24 123 4567"
+                    placeholder="Enter your contact number"
                     className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
                   />
                 </label>

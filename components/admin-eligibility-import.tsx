@@ -62,7 +62,7 @@ export default function AdminEligibilityImport() {
             </span>
           )}
           <span className="mt-1.5 block text-[11px] leading-5 text-slate-500">
-            Maximum 5 MB and 5,000 voter rows. Name and Phone Number are required; any other columns are ignored.
+            Maximum 5 MB and 5,000 staff rows. Staff number, Name, and Contact are required; any other columns are ignored.
           </span>
         </label>
 
@@ -94,7 +94,7 @@ export default function AdminEligibilityImport() {
           <h2 className="text-sm font-semibold">Workbook requirements</h2>
         </div>
         <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
-          <li><strong className="text-slate-800">Required columns:</strong> Name and Phone Number.</li>
+          <li><strong className="text-slate-800">Required columns:</strong> Staff number, Name, and Contact.</li>
         </ul>
         <a
           className="mt-5 inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"

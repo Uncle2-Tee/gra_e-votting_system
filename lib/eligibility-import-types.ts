@@ -3,8 +3,9 @@ export type EligibilityImportRowResult = {
   status: "ACCEPTED" | "REJECTED" | "SKIPPED";
   errorCodes: string[];
   voter?: {
+    staffNumber: string;
+    staffNumberLookupHash: string;
     name: string;
-    lookupHash: string;
     phone: string;
     phoneLookupHash: string;
   };
