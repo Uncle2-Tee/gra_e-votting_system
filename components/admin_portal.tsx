@@ -56,7 +56,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
           </Link>
           <Link
             href="/admin/eligibility"
-            className="ml-auto inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl border border-white/25 bg-white/[0.06] px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/[0.12] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
+            className="ml-auto inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl border border-white/25 bg-white/[0.06] px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/[0.12] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 lg:ml-0"
           >
             <Settings2 className="size-4" />
             <span className="sm:hidden">Imports</span>

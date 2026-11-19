@@ -493,32 +493,32 @@ export function ElectionResultsPanel({
 
 function OverviewHero() {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-brand-navy/20 bg-gradient-to-br from-brand-navy via-emerald-900 to-brand-blue px-5 py-7 text-white shadow-lg shadow-brand-navy/10 sm:px-9 sm:py-10">
-      <div className="pointer-events-none absolute -right-14 -top-32 size-[340px] rounded-full border border-white/[0.08]" />
-      <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-brand-blue/[0.18] blur-3xl" />
+    <section className="relative overflow-hidden rounded-2xl border border-brand-navy/15 bg-transparent px-5 py-7 text-slate-900 sm:px-9 sm:py-10">
+      <div className="pointer-events-none absolute -right-14 -top-32 size-[340px] rounded-full border border-emerald-900/[0.08]" />
+      <div className="pointer-events-none absolute -bottom-40 right-40 size-[260px] rounded-full bg-brand-blue/[0.05] blur-3xl" />
       <div className="relative max-w-2xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-sky-100 uppercase">
-          <span className="size-1.5 rounded-full bg-brand-blue" />
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-white/40 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-emerald-900 uppercase">
+          <span className="size-1.5 rounded-full bg-emerald-700" />
           Your voice shapes the future
         </span>
         <h1 className="mt-5 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
           Welcome to your{" "}
-          <span className="text-sky-200">election dashboard.</span>
+          <span className="text-emerald-800">election dashboard.</span>
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-sky-50/80">
+        <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
           Review approved candidates or apply as a candidate for an available
           position. Administrators review every application before publication.
         </p>
         <div className="mt-6 flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start sm:gap-3">
           <Link
-            className="inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-center text-[11px] font-semibold text-brand-navy transition hover:bg-sky-50 sm:gap-2 sm:px-4 sm:text-xs"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-900 px-3 text-center text-[11px] font-semibold text-white transition hover:bg-emerald-950 sm:gap-2 sm:px-4 sm:text-xs"
             href="/vote/candidate-application"
           >
             <span>Apply as a candidate</span>
             <ArrowRight className="size-3.5" />
           </Link>
           <Link
-            className="inline-flex h-10 min-w-0 items-center justify-center rounded-lg border border-white/25 bg-white/[0.06] px-3 text-center text-[11px] font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.12] sm:px-4 sm:text-xs"
+            className="inline-flex h-10 min-w-0 items-center justify-center rounded-lg border border-sky-200 bg-sky-100 px-3 text-center text-[11px] font-semibold text-brand-navy transition hover:border-sky-300 hover:bg-sky-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue sm:px-4 sm:text-xs"
             href="/vote/candidates"
           >
             Browse candidates
@@ -534,8 +534,8 @@ function Overview({ data }: { data: VoterPortalData }) {
     <>
       <OverviewHero />
       <section aria-label="Election portal summary" className="mt-5 grid grid-cols-2 gap-3">
-        <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+        <article className="flex items-center gap-3 rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50/90 via-white to-blue-50/80 p-4 shadow-sm shadow-sky-950/[0.04] transition duration-200 hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-sky-100 text-sky-800">
             <ClipboardCheck className="size-[18px]" />
           </span>
           <div>
@@ -543,8 +543,8 @@ function Overview({ data }: { data: VoterPortalData }) {
             <p className="text-[11px] text-slate-500">Candidate applications available</p>
           </div>
         </article>
-        <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-800">
+        <article className="flex items-center gap-3 rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 via-white to-cyan-50/80 p-4 shadow-sm shadow-teal-950/[0.04] transition duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-teal-100 text-teal-800">
             <BadgeCheck className="size-[18px]" />
           </span>
           <div>
@@ -588,7 +588,7 @@ function Overview({ data }: { data: VoterPortalData }) {
               return (
                 <article
                   key={election.id}
-                  className="flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md sm:p-5"
+                  className="flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-sky-200/70 bg-gradient-to-br from-white via-white to-sky-50/80 p-4 shadow-sm transition hover:border-sky-300 hover:shadow-md sm:p-5"
                 >
                   <div className="min-w-0">
                     <span
@@ -638,7 +638,7 @@ function Overview({ data }: { data: VoterPortalData }) {
       ) : null}
 
       <section className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
-        <article className="rounded-2xl border border-slate-200/80 bg-white p-5 transition duration-200 hover:border-emerald-200 hover:shadow-md sm:p-6">
+        <article className="rounded-2xl border border-sky-200/80 bg-gradient-to-br from-white via-white to-indigo-50/70 p-5 shadow-sm shadow-sky-950/[0.03] transition duration-200 hover:border-sky-300 hover:shadow-md sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-700 uppercase">
@@ -653,7 +653,7 @@ function Overview({ data }: { data: VoterPortalData }) {
                   : "Approved candidates will appear here after administrator review."}
               </p>
             </div>
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800">
               <UsersRound className="size-4" />
             </span>
           </div>
@@ -697,8 +697,8 @@ function Overview({ data }: { data: VoterPortalData }) {
           </Link>
         </article>
 
-        <aside className="hidden h-fit self-start rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 transition duration-200 hover:shadow-md sm:block sm:p-6">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-white text-emerald-800 ring-1 ring-emerald-900/10">
+        <aside className="hidden h-fit self-start rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 via-white to-cyan-50/80 p-5 transition duration-200 hover:shadow-md sm:block sm:p-6">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-white/90 text-teal-800 ring-1 ring-teal-900/10">
             <ShieldCheck className="size-5" />
           </span>
           <h2 className="mt-4 text-sm font-semibold text-slate-900">A reviewed, transparent process</h2>
@@ -707,7 +707,7 @@ function Overview({ data }: { data: VoterPortalData }) {
             should expect their identity and eligibility to be verified.
           </p>
           <Link
-            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 active:scale-[0.99]"
+            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 active:scale-[0.99]"
             href="/vote/candidate-application"
           >
             Open candidate application <ArrowRight className="size-3.5" />
