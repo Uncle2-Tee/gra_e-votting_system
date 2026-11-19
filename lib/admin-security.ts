@@ -74,7 +74,7 @@ function logAdminSessionDatabaseFailure(error: unknown) {
           : error.errorCode ?? "INITIALIZATION")
       : "UNAVAILABLE";
   const errorName = error instanceof Error ? error.name : "UnknownError";
-  console.error(
+  console.warn(
     `Could not verify the administrator session because the database is unavailable. errorName=${errorName} errorCode=${errorCode}`,
   );
 }

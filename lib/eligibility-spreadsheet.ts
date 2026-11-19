@@ -1,9 +1,7 @@
 import ExcelJS from "exceljs";
 import {
   createVoterStaffNumberLookupHash,
-  createVoterPhoneLookupHash,
   normalizeVoterStaffNumber,
-  normalizePhoneNumber,
 } from "@/lib/voter-data-crypto";
 import type { EligibilityImportRowResult } from "@/lib/eligibility-import-types";
 
@@ -33,22 +31,33 @@ function normalizedHeader(value: string) {
 }
 
 function resolveHeaders(worksheet: ExcelJS.Worksheet) {
-  const headers = new Map<string, number>();
+  const headers = new Map<string, number[]>();
   worksheet.getRow(1).eachCell((cell, columnNumber) => {
     const header = normalizedHeader(getCellText(cell));
     if (header) {
-      if (headers.has(header)) {
-        throw new EligibilitySpreadsheetError("The spreadsheet contains duplicate column headers.");
+      const columns = headers.get(header);
+      if (columns) {
+        columns.push(columnNumber);
+      } else {
+        headers.set(header, [columnNumber]);
       }
-      headers.set(header, columnNumber);
     }
   });
 
-  const findColumn = (aliases: string[]) =>
-    aliases.map((alias) => headers.get(alias)).find((column) => column !== undefined);
-  const staffNumber = findColumn(["staffnumber", "staffno", "staffid", "employeeid"]);
-  const name = findColumn(["name", "fullname", "votername"]);
-  const contact = findColumn(["contact", "contactnumber", "phone", "phonenumber", "mobile", "mobilenumber"]);
+  const findColumn = (aliases: string[], label: string) => {
+    const columns = aliases.flatMap((alias) => headers.get(alias) ?? []);
+    if (columns.length > 1) {
+      throw new EligibilitySpreadsheetError(
+        `The spreadsheet contains duplicate ${label} columns.`,
+      );
+    }
+    return columns[0];
+  };
+  const staffNumber = findColumn(
+    ["staffnumber", "staffno", "staffid", "employeeid"],
+    "Staff number",
+  );
+  const name = findColumn(["name", "fullname", "votername"], "Name");
   if (!staffNumber) {
     throw new EligibilitySpreadsheetError(
       "The first row must include a Staff number column.",
@@ -59,13 +68,7 @@ function resolveHeaders(worksheet: ExcelJS.Worksheet) {
       "The first row must include a Name column.",
     );
   }
-  if (!contact) {
-    throw new EligibilitySpreadsheetError(
-      "The first row must include a Contact column.",
-    );
-  }
-
-  return { staffNumber, name, contact };
+  return { staffNumber, name };
 }
 
 function cellValue(worksheet: ExcelJS.Worksheet, row: number, column?: number) {
@@ -95,20 +98,16 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
   }
 
   const columns = resolveHeaders(worksheet);
-  const seenStaffNumbers = new Set<string>();
-  const seenPhoneNumbers = new Set<string>();
   const rows: EligibilityImportRowResult[] = [];
+  const invalidRowNumbers: number[] = [];
 
   for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const rowErrors: string[] = [];
     let staffNumber = "";
     let name = "";
-    let phone = "";
-
     try {
       staffNumber = cellValue(worksheet, rowNumber, columns.staffNumber);
       name = cellValue(worksheet, rowNumber, columns.name);
-      phone = cellValue(worksheet, rowNumber, columns.contact);
     } catch (error) {
       if (error instanceof EligibilitySpreadsheetError) {
         rowErrors.push("unsupported_cell_value");
@@ -117,8 +116,7 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
       }
     }
 
-    if (!staffNumber && !name && !phone && rowErrors.length === 0) {
-      rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["empty_row"] });
+    if (!staffNumber && !name && rowErrors.length === 0) {
       continue;
     }
 
@@ -129,33 +127,12 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
     if (!name || name.length > 150) {
       rowErrors.push("invalid_name");
     }
-    const normalizedPhone = normalizePhoneNumber(phone);
-    const phoneDigits = normalizedPhone.replace(/\D/g, "");
-    if (
-      !phone ||
-      !/^\+?[\d\s().-]+$/.test(phone) ||
-      phoneDigits.length < 7 ||
-      phoneDigits.length > 15
-    ) {
-      rowErrors.push("invalid_phone");
-    }
     if (rowErrors.length > 0) {
-      rows.push({ rowNumber, status: "REJECTED", errorCodes: rowErrors });
+      invalidRowNumbers.push(rowNumber);
       continue;
     }
 
     const staffNumberLookupHash = createVoterStaffNumberLookupHash(normalizedStaffNumber);
-    const phoneLookupHash = createVoterPhoneLookupHash(normalizedPhone);
-    if (seenStaffNumbers.has(staffNumberLookupHash)) {
-      rows.push({ rowNumber, status: "SKIPPED", errorCodes: ["duplicate_staff_number_in_upload"] });
-      continue;
-    }
-    if (seenPhoneNumbers.has(phoneLookupHash)) {
-      rows.push({ rowNumber, status: "REJECTED", errorCodes: ["duplicate_phone_in_upload"] });
-      continue;
-    }
-    seenStaffNumbers.add(staffNumberLookupHash);
-    seenPhoneNumbers.add(phoneLookupHash);
     rows.push({
       rowNumber,
       status: "ACCEPTED",
@@ -164,13 +141,19 @@ export async function parseEligibilitySpreadsheet(input: Uint8Array) {
         staffNumber: normalizedStaffNumber,
         staffNumberLookupHash,
         name: name.normalize("NFKC").trim().replace(/\s+/g, " "),
-        phone: normalizedPhone,
-        phoneLookupHash,
       },
     });
   }
 
-  if (!rows.some((row) => row.status !== "SKIPPED" || row.errorCodes[0] !== "empty_row")) {
+  if (invalidRowNumbers.length > 0) {
+    const listedRows = invalidRowNumbers.slice(0, 20).join(", ");
+    const remainingRows = invalidRowNumbers.length - 20;
+    throw new EligibilitySpreadsheetError(
+      `Every voter row must have a valid staff number and name. Check spreadsheet rows ${listedRows}${remainingRows > 0 ? ` and ${remainingRows} more` : ""}.`,
+    );
+  }
+
+  if (rows.length === 0) {
     throw new EligibilitySpreadsheetError("The worksheet does not contain any voter rows.");
   }
 

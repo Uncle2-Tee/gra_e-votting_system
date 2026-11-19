@@ -10,6 +10,7 @@ export type AdminOverview = {
     totalElections: number;
     registeredVoters: number;
     eligibleVoters: number;
+    remainingEligibleVoters: number;
     participants: number;
     turnoutPercentage: number;
   };
@@ -175,6 +176,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
         totalElections,
         registeredVoters,
         eligibleVoters,
+        remainingEligibleVoters: Math.max(0, eligibleVoters - participants),
         participants,
         turnoutPercentage:
           eligibleVoters === 0

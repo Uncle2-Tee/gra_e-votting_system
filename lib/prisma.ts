@@ -1,11 +1,20 @@
 import { PrismaClient } from "@prisma/client";
 
-const runtimeDatabaseUrl = process.env.DATABASE_URL;
+const runtimeDatabaseUrl =
+  process.env.NODE_ENV === "development"
+    ? process.env.DIRECT_URL ?? process.env.DATABASE_URL
+    : process.env.DATABASE_URL ?? process.env.DIRECT_URL;
 if (!runtimeDatabaseUrl) {
   throw new Error("DATABASE_URL must be configured.");
 }
 
 const runtimeDatabase = new URL(runtimeDatabaseUrl);
+if (
+  /\.supabase\.(?:com|co)$/i.test(runtimeDatabase.hostname) &&
+  !runtimeDatabase.searchParams.has("sslmode")
+) {
+  runtimeDatabase.searchParams.set("sslmode", "require");
+}
 if (!runtimeDatabase.searchParams.has("connection_limit")) {
   runtimeDatabase.searchParams.set("connection_limit", "3");
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BadgeCheck,
   ChartNoAxesCombined,
@@ -79,8 +79,30 @@ export default function AdminDashboardShell({
   pendingCandidateBadge: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const activePage = pathname.split("/")[2] ?? "overview";
+
+  useEffect(() => {
+    if (pathname !== "/admin") {
+      return;
+    }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+    const intervalId = window.setInterval(refreshWhenVisible, 10_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+    };
+  }, [pathname, router]);
 
   return (
     <div className="min-h-screen bg-[#f6f9fc] text-slate-900">

@@ -14,7 +14,7 @@ import type { AdminOverview } from "@/lib/admin-overview";
 const metrics = [
   { label: "Total elections", icon: Vote, value: "totalElections" },
   { label: "Registered voters", icon: UsersRound, value: "registeredVoters" },
-  { label: "Eligible voter records", icon: Fingerprint, value: "eligibleVoters" },
+  { label: "Eligible voters remaining", icon: Fingerprint, value: "remainingEligibleVoters" },
   { label: "Overall participation", icon: ChartNoAxesCombined, value: "turnoutPercentage" },
 ] as const;
 
@@ -76,16 +76,21 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
               </span>
             </div>
             <p className="mt-4 break-words text-[26px] leading-none font-semibold tracking-tight text-slate-950 sm:mt-5">
-              {overview.stats
-                ? value === "turnoutPercentage"
-                  ? `${overview.stats.turnoutPercentage}%`
-                  : overview.stats[value]
-                : value === "turnoutPercentage"
-                  ? "—"
+              <span
+                aria-live={value === "remainingEligibleVoters" ? "polite" : undefined}
+                aria-atomic={value === "remainingEligibleVoters" || undefined}
+              >
+                {overview.stats
+                  ? value === "turnoutPercentage"
+                    ? `${overview.stats.turnoutPercentage}%`
+                    : overview.stats[value]
                   : "—"}
+              </span>
               <span className="mt-2 block break-words text-[10px] leading-4 font-normal tracking-normal text-slate-400 sm:text-[11px]">
                 {value === "turnoutPercentage"
                   ? `${overview.stats?.participants ?? 0} voters participated across eligible election assignments`
+                  : value === "remainingEligibleVoters"
+                    ? "Eligible election assignments without a recorded vote · Live updates every 10 seconds"
                   : overview.databaseStatus === "connected"
                     ? "Current database total"
                     : "Unavailable while disconnected"}

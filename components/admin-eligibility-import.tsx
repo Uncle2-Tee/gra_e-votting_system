@@ -62,7 +62,7 @@ export default function AdminEligibilityImport() {
             </span>
           )}
           <span className="mt-1.5 block text-[11px] leading-5 text-slate-500">
-            Maximum 5 MB and 5,000 staff rows. Staff number, Name, and Contact are required; any other columns are ignored.
+            Maximum 5 MB and 5,000 staff rows. Staff number and Name are required; contact information and other columns are ignored.
           </span>
         </label>
 
@@ -73,9 +73,9 @@ export default function AdminEligibilityImport() {
         )}
         {state.result && (
           <div aria-live="polite" className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
-            <p className="text-xs font-semibold text-emerald-900">Import saved</p>
+            <p className="text-xs font-semibold text-emerald-900">Import completed</p>
             <p className="mt-1 text-xs leading-5 text-emerald-800">
-              {state.result.acceptedRows} voter rows saved · {state.result.electionsUpdated} current elections updated · {state.result.rejectedRows} rejected · {state.result.skippedRows} skipped
+              {state.result.acceptedRows} voter rows accepted · {state.result.electionsUpdated} current elections updated · {state.result.rejectedRows} rejected · {state.result.skippedRows} skipped
             </p>
           </div>
         )}
@@ -94,7 +94,7 @@ export default function AdminEligibilityImport() {
           <h2 className="text-sm font-semibold">Workbook requirements</h2>
         </div>
         <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
-          <li><strong className="text-slate-800">Required columns:</strong> Staff number, Name, and Contact.</li>
+          <li><strong className="text-slate-800">Required columns:</strong> Staff number and Name. Contact columns are ignored.</li>
         </ul>
         <a
           className="mt-5 inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"

@@ -6,8 +6,6 @@ export type EligibilityImportRowResult = {
     staffNumber: string;
     staffNumberLookupHash: string;
     name: string;
-    phone: string;
-    phoneLookupHash: string;
   };
 };
 
