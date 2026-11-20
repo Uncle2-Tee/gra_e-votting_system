@@ -44,10 +44,10 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
             {overview.databaseStatus === "connected" ? "System data connected" : "System data unavailable"}
           </div>
         </div>
-        <div className="relative z-10 mt-6 flex flex-wrap items-center gap-3 border-t border-white/15 pt-5">
+        <div className="relative z-10 mt-6 grid grid-cols-2 items-stretch gap-3 border-t border-white/15 pt-5 sm:flex sm:flex-wrap sm:items-center">
           <Link
             href="/admin/candidates"
-            className="inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-xs font-semibold text-brand-navy shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0"
+            className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 text-xs font-semibold text-brand-navy shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 sm:w-fit sm:px-4"
           >
             <FileCheck2 className="size-4" />
             <span className="sm:hidden">Review</span>
@@ -56,7 +56,7 @@ export default function AdminPortal({ overview }: { overview: AdminOverview }) {
           </Link>
           <Link
             href="/admin/eligibility"
-            className="ml-auto inline-flex h-11 w-fit shrink-0 items-center gap-2 rounded-xl border border-white/25 bg-white/[0.06] px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/[0.12] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 lg:ml-0"
+            className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/[0.06] px-3 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/[0.12] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:translate-y-0 sm:ml-auto sm:w-fit sm:px-4 lg:ml-0"
           >
             <Settings2 className="size-4" />
             <span className="sm:hidden">Imports</span>

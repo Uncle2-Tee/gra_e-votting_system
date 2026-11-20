@@ -105,7 +105,7 @@ export default function VoterEntryPage({
               <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
                 <Vote className="mt-0.5 size-5 shrink-0 text-blue-800" />
                 <div>
-                  <h2 className="text-sm font-semibold text-blue-950">No election is accepting votes right now</h2>
+                  <h2 className="text-sm font-semibold text-blue-950">No elections yet.</h2>
                   <p className="mt-1 text-xs leading-5 text-blue-900/80">
                     When an election opens, it will appear here. You can review published results in the meantime.
                   </p>
