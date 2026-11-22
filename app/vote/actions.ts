@@ -138,67 +138,93 @@ export async function submitCandidateApplication(
     const nameCiphertext = encryptVoterField(name, "candidate-name");
     const applicantEmailCiphertext = encryptVoterField(email, "nomination-email");
     const applicantPhoneCiphertext = encryptVoterField(normalizedPhone, "nomination-phone");
+    const applicationId = randomUUID();
     const auditId = randomUUID();
-    const existing = await prisma.candidateApplication.findUnique({
-      where: {
-        positionTemplateId_applicantLookupHash: {
-          positionTemplateId: positionTemplate.id,
-          applicantLookupHash,
-        },
-      },
-      select: { id: true, status: true },
-    });
-    if (existing && (existing.status === "PENDING" || existing.status === "APPROVED")) {
+    const submissionRows = await prisma.$queryRaw<{
+      result: "duplicate" | "submitted";
+    }[]>(Prisma.sql`
+      WITH saved_application AS (
+        INSERT INTO "CandidateApplication" (
+          "id",
+          "positionTemplateId",
+          "nameCiphertext",
+          "applicantEmailCiphertext",
+          "applicantPhoneCiphertext",
+          "applicantLookupHash",
+          "photoData",
+          "photoMimeType",
+          "status",
+          "updatedAt"
+        )
+        VALUES (
+          ${applicationId}::uuid,
+          ${positionTemplate.id}::uuid,
+          ${nameCiphertext},
+          ${applicantEmailCiphertext},
+          ${applicantPhoneCiphertext},
+          ${applicantLookupHash},
+          ${photoData},
+          ${photoData ? "image/webp" : null},
+          'PENDING'::"CandidateStatus",
+          CURRENT_TIMESTAMP
+        )
+        ON CONFLICT ("positionTemplateId", "applicantLookupHash")
+        DO UPDATE SET
+          "nameCiphertext" = EXCLUDED."nameCiphertext",
+          "applicantEmailCiphertext" = EXCLUDED."applicantEmailCiphertext",
+          "applicantPhoneCiphertext" = EXCLUDED."applicantPhoneCiphertext",
+          "photoData" = EXCLUDED."photoData",
+          "photoMimeType" = EXCLUDED."photoMimeType",
+          "status" = 'PENDING'::"CandidateStatus",
+          "reviewedById" = NULL,
+          "reviewedAt" = NULL,
+          "reviewNote" = NULL,
+          "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "CandidateApplication"."status" IN (
+          'REJECTED'::"CandidateStatus",
+          'INACTIVE'::"CandidateStatus"
+        )
+        RETURNING "id"
+      ),
+      audit_entry AS (
+        INSERT INTO "AuditLog" (
+          "id",
+          "action",
+          "entityType",
+          "entityId",
+          "outcome",
+          "metadata"
+        )
+        SELECT
+          ${auditId}::uuid,
+          'CANDIDATE_APPLICATION_SUBMITTED',
+          'CANDIDATE_APPLICATION',
+          "id"::text,
+          'PENDING_REVIEW',
+          ${JSON.stringify({
+            positionTemplateId: positionTemplate.id,
+            positionTitle: positionTemplate.title,
+            hasProfilePhoto: Boolean(photoData),
+          })}::jsonb
+        FROM saved_application
+        RETURNING "id"
+      )
+      SELECT CASE
+        WHEN EXISTS (SELECT 1 FROM saved_application) THEN 'submitted'
+        ELSE 'duplicate'
+      END AS "result",
+      (SELECT COUNT(*) FROM audit_entry) AS "auditCount"
+    `);
+    const submissionResult = submissionRows[0]?.result;
+    if (submissionResult === "duplicate") {
       return {
         ...INITIAL_STATE,
         error: "An application with these details is already pending or approved for this position.",
       };
     }
-
-    const application = await prisma.candidateApplication.upsert({
-      where: {
-        positionTemplateId_applicantLookupHash: {
-          positionTemplateId: positionTemplate.id,
-          applicantLookupHash,
-        },
-      },
-      create: {
-        positionTemplateId: positionTemplate.id,
-        nameCiphertext,
-        applicantEmailCiphertext,
-        applicantPhoneCiphertext,
-        applicantLookupHash,
-        photoData,
-        photoMimeType: photoData ? "image/webp" : null,
-        status: "PENDING",
-      },
-      update: {
-        nameCiphertext,
-        applicantEmailCiphertext,
-        applicantPhoneCiphertext,
-        photoData,
-        photoMimeType: photoData ? "image/webp" : null,
-        status: "PENDING",
-        reviewedById: null,
-        reviewedAt: null,
-        reviewNote: null,
-      },
-      select: { id: true },
-    });
-    await prisma.auditLog.create({
-      data: {
-        id: auditId,
-        action: "CANDIDATE_APPLICATION_SUBMITTED",
-        entityType: "CANDIDATE_APPLICATION",
-        entityId: application.id,
-        outcome: "PENDING_REVIEW",
-        metadata: {
-          positionTemplateId: positionTemplate.id,
-          positionTitle: positionTemplate.title,
-          hasProfilePhoto: Boolean(photoData),
-        },
-      },
-    });
+    if (submissionResult !== "submitted") {
+      throw new Error("The candidate application query returned no result.");
+    }
 
     revalidatePath("/vote/access");
     revalidatePath("/vote/candidate-application");

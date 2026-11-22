@@ -165,6 +165,8 @@ model CandidateApplication {
 
   @@unique([positionTemplateId, applicantLookupHash])
   @@index([positionTemplateId, status])
+  @@index([status, createdAt, id])
+  @@index([status, reviewedAt, createdAt])
   @@index([reviewedById, reviewedAt])
 }
 

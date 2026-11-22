@@ -38,21 +38,37 @@ export default function VoterDashboardShell({
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   useEffect(() => {
+    const refreshInterval =
+      pathname === "/vote/results"
+        ? 30_000
+        : pathname === "/vote/overview"
+          ? 120_000
+          : null;
+    let lastRefreshAt = 0;
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") {
+      const now = Date.now();
+      if (
+        document.visibilityState === "visible" &&
+        now - lastRefreshAt >= 5_000
+      ) {
+        lastRefreshAt = now;
         router.refresh();
       }
     };
-    const intervalId = window.setInterval(refreshWhenVisible, 10_000);
+    const intervalId = refreshInterval
+      ? window.setInterval(refreshWhenVisible, refreshInterval)
+      : null;
     document.addEventListener("visibilitychange", refreshWhenVisible);
     window.addEventListener("focus", refreshWhenVisible);
 
     return () => {
-      window.clearInterval(intervalId);
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener("focus", refreshWhenVisible);
     };
-  }, [router]);
+  }, [pathname, router]);
 
   return (
     <main className="min-h-dvh bg-[#f6f9fc] text-slate-900 lg:pl-[272px]">

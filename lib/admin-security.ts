@@ -51,13 +51,8 @@ function isRetryableDatabaseConnectionFailure(error: unknown) {
       : error instanceof Prisma.PrismaClientInitializationError
         ? error.message.match(/\bP\d{4}\b/)?.[0] ?? error.errorCode
         : undefined;
-  const isUnclassifiedInitializationFailure =
-    error instanceof Prisma.PrismaClientInitializationError &&
-    !error.message.match(/\bP\d{4}\b/) &&
-    (!error.errorCode || error.errorCode === "UNEXPECTED");
   return (
-    ["P1001", "P1002", "P1008", "P1017", "P2024"].includes(errorCode ?? "") ||
-    isUnclassifiedInitializationFailure ||
+    ["P1001", "P1017"].includes(errorCode ?? "") ||
     (error instanceof Prisma.PrismaClientInitializationError &&
       /can't reach database server/i.test(error.message))
   );
@@ -265,7 +260,7 @@ export async function getCurrentAdmin() {
         }
       | null
       | undefined;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const tokenHashes = [hashSessionToken(token)];
         const legacyTokenHash = hashLegacySessionToken(token);
@@ -290,7 +285,7 @@ export async function getCurrentAdmin() {
         });
         break;
       } catch (error) {
-        if (attempt === 2 || !isRetryableDatabaseConnectionFailure(error)) {
+        if (attempt === 1 || !isRetryableDatabaseConnectionFailure(error)) {
           throw error;
         }
         await delay(250 * (attempt + 1));

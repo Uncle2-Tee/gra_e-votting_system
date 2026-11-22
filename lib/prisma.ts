@@ -19,7 +19,10 @@ if (!runtimeDatabase.searchParams.has("connection_limit")) {
   runtimeDatabase.searchParams.set("connection_limit", "3");
 }
 if (!runtimeDatabase.searchParams.has("pool_timeout")) {
-  runtimeDatabase.searchParams.set("pool_timeout", "20");
+  runtimeDatabase.searchParams.set("pool_timeout", "5");
+}
+if (!runtimeDatabase.searchParams.has("connect_timeout")) {
+  runtimeDatabase.searchParams.set("connect_timeout", "5");
 }
 
 declare global {
@@ -33,6 +36,4 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.prisma = prisma;
-}
+globalThis.prisma = prisma;

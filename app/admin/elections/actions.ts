@@ -208,17 +208,17 @@ function logElectionActionFailure(action: string, error: unknown) {
 function isRetryableDatabaseConnectionFailure(error: unknown) {
   const errorCode = getElectionActionErrorCode(error);
   return (
-    ["P1001", "P1002", "P2024"].includes(errorCode) ||
+    errorCode === "P1001" ||
     (error instanceof Error && /can't reach database server/i.test(error.message))
   );
 }
 
 async function retryDatabaseConnection<T>(operation: () => Promise<T>) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
-      if (attempt === 2 || !isRetryableDatabaseConnectionFailure(error)) {
+      if (attempt === 1 || !isRetryableDatabaseConnectionFailure(error)) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));

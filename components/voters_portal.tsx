@@ -873,7 +873,7 @@ export default function VotersPortal({
       ) : null}
 
       {section === "results" && results ? (
-        <ElectionResultsPanel data={results} />
+        <ElectionResultsPanel data={results} showHeading={false} />
       ) : null}
 
     </div>

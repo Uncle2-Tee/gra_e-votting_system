@@ -7,10 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
   "P1001",
-  "P1002",
-  "P1008",
   "P1017",
-  "P2024",
 ]);
 
 function getDatabaseErrorCode(error: unknown) {
@@ -38,9 +35,6 @@ function getDatabaseErrorCode(error: unknown) {
 }
 
 function isRetryableDatabaseError(error: unknown) {
-  if (error instanceof Prisma.PrismaClientInitializationError) {
-    return true;
-  }
   const code = getDatabaseErrorCode(error);
   return code !== null && RETRYABLE_DATABASE_ERROR_CODES.has(code);
 }
@@ -74,7 +68,7 @@ async function VoterEntryContent({
   }[] = [];
   let databaseAvailable = true;
   if (enabled) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const scheduledElections = await prisma.election.findMany({
           where: {
@@ -111,7 +105,7 @@ async function VoterEntryContent({
         );
         break;
       } catch (error) {
-        if (attempt < 2 && isRetryableDatabaseError(error)) {
+        if (attempt < 1 && isRetryableDatabaseError(error)) {
           await delay(200 * (attempt + 1));
           continue;
         }

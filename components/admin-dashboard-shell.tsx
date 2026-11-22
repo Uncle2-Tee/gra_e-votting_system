@@ -86,7 +86,7 @@ export default function AdminDashboardShell({
   const activePage = pathname.split("/")[2] ?? "overview";
 
   useEffect(() => {
-    if (pathname !== "/admin") {
+    if (pathname !== "/admin" && pathname !== "/admin/candidates") {
       return;
     }
 
@@ -151,7 +151,9 @@ export default function AdminDashboardShell({
                         className={`size-4 ${active ? "text-emerald-700" : "text-slate-400 group-hover:text-slate-600"}`}
                         strokeWidth={1.8}
                       />
-                      <span>{label}</span>
+                      <span className={id === "results" ? "text-[11px]" : undefined}>
+                        {label}
+                      </span>
                       <NavigationLinkStatus />
                       {id === "candidates" ? pendingCandidateBadge : active ? (
                         <span aria-hidden="true" className="ml-auto size-2 rounded-full bg-emerald-700 ring-2 ring-emerald-200" />
@@ -216,7 +218,11 @@ export default function AdminDashboardShell({
                     }`}
                   >
                     <Icon className={`size-4 shrink-0 ${active ? "text-brand-navy" : "text-slate-400 group-hover:text-brand-blue group-focus-visible:text-brand-blue"}`} strokeWidth={1.8} />
-                    <span className="min-w-0 truncate">{label}</span>
+                    <span
+                      className={`min-w-0 truncate ${id === "results" ? "text-xs" : ""}`}
+                    >
+                      {label}
+                    </span>
                     <NavigationLinkStatus />
                     {id === "candidates" ? pendingCandidateBadge : active ? (
                       <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-blue ring-1 ring-brand-navy/20" />

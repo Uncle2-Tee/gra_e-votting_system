@@ -15,14 +15,9 @@ import type {
 
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
   "P1001",
-  "INITIALIZATION",
-  "P1002",
-  "P1008",
   "P1017",
-  "P2024",
 ]);
-const MAX_VOTER_PORTAL_DATABASE_ATTEMPTS = 4;
-const MAX_UNREACHABLE_DATABASE_ATTEMPTS = 2;
+const MAX_VOTER_PORTAL_DATABASE_ATTEMPTS = 2;
 
 function getDatabaseErrorCode(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -43,14 +38,7 @@ function getDatabaseErrorCode(error: unknown) {
     : "UNKNOWN";
 }
 
-function getMaxDatabaseAttempts(error: unknown) {
-  return getDatabaseErrorCode(error) === "P1001"
-    ? MAX_UNREACHABLE_DATABASE_ATTEMPTS
-    : MAX_VOTER_PORTAL_DATABASE_ATTEMPTS;
-}
-
 function isRetryableDatabaseError(error: unknown) {
-  // P1001 is retried once because each attempt fans out into several parallel queries.
   return RETRYABLE_DATABASE_ERROR_CODES.has(getDatabaseErrorCode(error));
 }
 
@@ -259,7 +247,7 @@ export async function getVoterPortalData(
       };
     } catch (error) {
       if (
-        attempt < getMaxDatabaseAttempts(error) - 1 &&
+        attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 &&
         isRetryableDatabaseError(error)
       ) {
         await delay(300 * (attempt + 1));
@@ -281,7 +269,7 @@ export async function getVoterPortalData(
   throw new Error("Voter portal data retries ended unexpectedly.");
 }
 
-function queryVoterResults() {
+async function queryVoterResults() {
   const resultElectionStatuses: ElectionStatus[] = [
     "SCHEDULED",
     "PUBLISHED",
@@ -296,50 +284,50 @@ function queryVoterResults() {
     },
   } satisfies Prisma.BallotWhereInput & Prisma.BallotSelectionWhereInput;
 
-  return Promise.all([
-    prisma.election.findMany({
-      where: {
-        status: { in: resultElectionStatuses },
-      },
-      orderBy: [{ endsAt: "desc" }, { updatedAt: "desc" }],
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        timezone: true,
-        resultsPublishedAt: true,
-        startsAt: true,
-        endsAt: true,
-        positions: {
-          where: { includedInElection: true },
-          orderBy: { displayOrder: "asc" },
-          select: {
-            id: true,
-            title: true,
-            candidates: {
-              where: { status: { in: ["APPROVED", "INACTIVE"] } },
-              select: {
-                id: true,
-                nameCiphertext: true,
-                status: true,
-                photoMimeType: true,
-              },
+  const elections = await prisma.election.findMany({
+    where: {
+      status: { in: resultElectionStatuses },
+    },
+    orderBy: [{ endsAt: "desc" }, { updatedAt: "desc" }],
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      timezone: true,
+      resultsPublishedAt: true,
+      startsAt: true,
+      endsAt: true,
+      positions: {
+        where: { includedInElection: true },
+        orderBy: { displayOrder: "asc" },
+        select: {
+          id: true,
+          title: true,
+          candidates: {
+            where: { status: { in: ["APPROVED", "INACTIVE"] } },
+            select: {
+              id: true,
+              nameCiphertext: true,
+              status: true,
+              photoMimeType: true,
             },
           },
         },
       },
-    }),
-    prisma.ballot.groupBy({
-      by: ["electionId"],
-      where: resultsElectionFilter,
-      _count: { _all: true },
-    }),
-    prisma.ballotSelection.groupBy({
-      by: ["electionId", "positionId", "candidateId"],
-      where: resultsElectionFilter,
-      _count: { _all: true },
-    }),
-  ]);
+    },
+  });
+  const ballotCounts = await prisma.ballot.groupBy({
+    by: ["electionId"],
+    where: resultsElectionFilter,
+    _count: { _all: true },
+  });
+  const selectionCounts = await prisma.ballotSelection.groupBy({
+    by: ["electionId", "positionId", "candidateId"],
+    where: resultsElectionFilter,
+    _count: { _all: true },
+  });
+
+  return { elections, ballotCounts, selectionCounts };
 }
 
 export async function getVoterResultsData(): Promise<VoterResultsData> {
@@ -355,7 +343,7 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
         break;
       } catch (error) {
         if (
-          attempt >= getMaxDatabaseAttempts(error) - 1 ||
+          attempt >= MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 ||
           !isRetryableDatabaseError(error)
         ) {
           throw error;
@@ -368,7 +356,7 @@ export async function getVoterResultsData(): Promise<VoterResultsData> {
       throw new Error("Voter results data retries ended unexpectedly.");
     }
 
-    const [elections, ballotCounts, selectionCounts] = queryResult;
+    const { elections, ballotCounts, selectionCounts } = queryResult;
 
     const ballotsByElection = new Map(
       ballotCounts.map(({ electionId, _count }) => [electionId, _count._all]),
@@ -477,7 +465,7 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
       };
     } catch (error) {
       if (
-        attempt < getMaxDatabaseAttempts(error) - 1 &&
+        attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS - 1 &&
         isRetryableDatabaseError(error)
       ) {
         await delay(300 * (attempt + 1));

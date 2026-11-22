@@ -4,10 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
   "P1001",
-  "P1002",
-  "P1008",
   "P1017",
-  "P2024",
 ]);
 
 function getDatabaseErrorCode(error: unknown) {
@@ -29,20 +26,19 @@ function isRetryableDatabaseError(error: unknown) {
   const errorCode = getDatabaseErrorCode(error);
   return (
     RETRYABLE_DATABASE_ERROR_CODES.has(errorCode) ||
-    errorCode === "INITIALIZATION" ||
     (error instanceof Prisma.PrismaClientInitializationError &&
       /can't reach database server/i.test(error.message))
   );
 }
 
 async function getPendingCandidateCount() {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await prisma.candidateApplication.count({
         where: { status: "PENDING" },
       });
     } catch (error) {
-      if (attempt === 2 || !isRetryableDatabaseError(error)) {
+      if (attempt === 1 || !isRetryableDatabaseError(error)) {
         throw error;
       }
       await delay(250 * (attempt + 1));
