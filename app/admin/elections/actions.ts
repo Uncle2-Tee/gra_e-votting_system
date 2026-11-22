@@ -28,6 +28,7 @@ export type ElectionActionState = {
 export type UpdateElectionScheduleState = ElectionActionState;
 export type AddElectionPositionsState = ElectionActionState;
 export type RemoveElectionPositionState = ElectionActionState;
+export type PositionTemplateActionState = ElectionActionState;
 export type DeleteElectionState = ElectionActionState;
 const INITIAL_STATE: ElectionActionState = { error: null, success: null };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -44,6 +45,144 @@ function chunks<T>(values: T[], size: number) {
 function readText(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+export async function addPositionTemplates(
+  _previousState: PositionTemplateActionState,
+  formData: FormData,
+): Promise<PositionTemplateActionState> {
+  let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
+  try {
+    admin = await getCurrentAdmin();
+  } catch (error) {
+    if (!isAdminDatabaseUnavailableError(error)) {
+      throw error;
+    }
+    return { ...INITIAL_STATE, error: "Positions could not be saved because the database is unavailable." };
+  }
+  if (!admin) {
+    redirect("/admin/login");
+  }
+  if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
+    return { ...INITIAL_STATE, error: "You are not authorized to manage positions." };
+  }
+
+  const positions = formData
+    .getAll("positions")
+    .filter((value): value is string => typeof value === "string")
+    .map((position) => position.trim().normalize("NFKC"))
+    .filter(Boolean);
+
+  if (!hasValidPositionNames(positions)) {
+    return { ...INITIAL_STATE, error: "Enter one or more unique valid position names." };
+  }
+
+  try {
+    const result = await prisma.$transaction(async (transaction) => {
+      const existing = await transaction.positionTemplate.findMany({
+        orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
+        select: { title: true, displayOrder: true },
+      });
+      const knownNames = new Set(existing.map(({ title }) => title.toLocaleLowerCase("en")));
+      const newPositions = positions.filter(
+        (title) => !knownNames.has(title.toLocaleLowerCase("en")),
+      );
+      if (newPositions.length === 0) {
+        return { added: 0 };
+      }
+      await transaction.positionTemplate.createMany({
+        data: newPositions.map((title, index) => ({
+          title,
+          displayOrder: existing.length + index,
+        })),
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "POSITION_TEMPLATES_ADDED",
+          entityType: "POSITION_TEMPLATE",
+          entityId: "GLOBAL",
+          outcome: "CREATED",
+          metadata: { positions: newPositions },
+        },
+      });
+      return { added: newPositions.length };
+    });
+
+    revalidatePath("/admin/positions");
+    revalidatePath("/admin/elections");
+    revalidatePath("/vote/positions");
+    revalidatePath("/vote/overview");
+    revalidatePath("/vote/candidate-application");
+    return {
+      error: null,
+      success:
+        result.added > 0
+          ? `${result.added} position${result.added === 1 ? "" : "s"} saved. No election was created.`
+          : "Those positions already exist.",
+    };
+  } catch (error) {
+    logElectionActionFailure("Global position creation failed.", error);
+    return { ...INITIAL_STATE, error: "The positions could not be saved. Please try again." };
+  }
+}
+
+export async function removePositionTemplate(
+  positionTemplateId: string,
+  _previousState: PositionTemplateActionState,
+  formData: FormData,
+): Promise<PositionTemplateActionState> {
+  void formData;
+  let admin: Awaited<ReturnType<typeof getCurrentAdmin>>;
+  try {
+    admin = await getCurrentAdmin();
+  } catch (error) {
+    if (!isAdminDatabaseUnavailableError(error)) {
+      throw error;
+    }
+    return { ...INITIAL_STATE, error: "The position could not be removed because the database is unavailable." };
+  }
+  if (!admin) {
+    redirect("/admin/login");
+  }
+  if (admin.role !== "SUPER_ADMIN" && admin.role !== "ELECTION_ADMIN") {
+    return { ...INITIAL_STATE, error: "You are not authorized to manage positions." };
+  }
+  if (!UUID_PATTERN.test(positionTemplateId)) {
+    return { ...INITIAL_STATE, error: "The position could not be found." };
+  }
+
+  try {
+    const position = await prisma.positionTemplate.findUnique({
+      where: { id: positionTemplateId },
+      select: { id: true, title: true },
+    });
+    if (!position) {
+      return { ...INITIAL_STATE, error: "The position could not be found." };
+    }
+    await prisma.$transaction(async (transaction) => {
+      await transaction.positionTemplate.delete({ where: { id: positionTemplateId } });
+      await transaction.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "POSITION_TEMPLATE_REMOVED",
+          entityType: "POSITION_TEMPLATE",
+          entityId: positionTemplateId,
+          outcome: "DELETED",
+          metadata: { position: position.title },
+        },
+      });
+    });
+    revalidatePath("/admin/positions");
+    revalidatePath("/admin/elections");
+    revalidatePath("/vote/positions");
+    revalidatePath("/vote/overview");
+    revalidatePath("/vote/candidate-application");
+    return { error: null, success: `"${position.title}" was removed. No election was changed.` };
+  } catch (error) {
+    logElectionActionFailure("Global position removal failed.", error);
+    return { ...INITIAL_STATE, error: "The position could not be removed. Please try again." };
+  }
 }
 
 function getElectionActionErrorCode(error: unknown) {
@@ -189,8 +328,52 @@ export async function scheduleNewElection(
               })),
             },
           },
-          select: { id: true, title: true },
+          select: {
+            id: true,
+            title: true,
+            positions: { select: { id: true, title: true } },
+          },
         });
+        const approvedApplications = await transaction.candidateApplication.findMany({
+          where: {
+            status: "APPROVED",
+            positionTemplate: { title: { in: positionTemplates.map(({ title }) => title) } },
+          },
+          select: {
+            nameCiphertext: true,
+            applicantEmailCiphertext: true,
+            applicantPhoneCiphertext: true,
+            applicantLookupHash: true,
+            photoData: true,
+            photoMimeType: true,
+            positionTemplate: { select: { title: true } },
+          },
+        });
+        const approvedCandidates = approvedApplications.flatMap((application) => {
+          const position = election.positions.find(
+            ({ title }) => title === application.positionTemplate.title,
+          );
+          if (!position) {
+            return [];
+          }
+          return [{
+            electionId: election.id,
+            positionId: position.id,
+            nameCiphertext: application.nameCiphertext,
+            applicantEmailCiphertext: application.applicantEmailCiphertext,
+            applicantPhoneCiphertext: application.applicantPhoneCiphertext,
+            applicantLookupHash: application.applicantLookupHash,
+            photoData: application.photoData,
+            photoMimeType: application.photoMimeType,
+            status: "APPROVED" as const,
+          }];
+        });
+        if (approvedCandidates.length > 0) {
+          await transaction.candidate.createMany({
+            data: approvedCandidates,
+            skipDuplicates: true,
+          });
+        }
 
         const activeVoters = await transaction.voter.findMany({
           where: { status: "ACTIVE" },

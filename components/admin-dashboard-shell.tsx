@@ -9,6 +9,7 @@ import {
   ChartNoAxesCombined,
   FileSpreadsheet,
   LayoutDashboard,
+  ListPlus,
   LogOut,
   Menu,
   Vote,
@@ -26,6 +27,7 @@ const navigationGroups = [
   {
     label: "Election operations",
     items: [
+      { id: "positions", label: "Positions", href: "/admin/positions", icon: ListPlus },
       { id: "candidates", label: "Candidate review", href: "/admin/candidates", icon: BadgeCheck },
       { id: "eligibility", label: "Eligibility & imports", href: "/admin/eligibility", icon: FileSpreadsheet },
       { id: "elections", label: "Voting setup", href: "/admin/elections", icon: Vote },

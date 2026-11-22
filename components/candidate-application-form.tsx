@@ -199,8 +199,8 @@ export default function CandidateApplicationForm({
             className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900"
           >
             {unavailable
-              ? "Available positions are temporarily unavailable because election data could not be loaded."
-              : "Candidate applications are not available right now. Administrators can add positions for upcoming elections."}
+              ? "Candidate applications are temporarily unavailable because the position data could not be loaded."
+              : "No positions have been configured yet. Please return after an administrator adds an available position."}
           </p>
         ) : null}
 
@@ -339,7 +339,7 @@ export default function CandidateApplicationForm({
         </h3>
         <ol className="mt-4 space-y-4">
           {[
-            ["01", "Choose a form", "Select an available position for a scheduled election."],
+            ["01", "Choose a position", "Select an available position configured by the administrator."],
             ["02", "Submit your details", "An administrator will review your contact details and eligibility."],
             ["03", "Wait for approval", "Only approved candidates are shown in the voter portal."],
           ].map(([number, title, description]) => (

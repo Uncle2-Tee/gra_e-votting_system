@@ -38,7 +38,7 @@ function isRetryableDatabaseError(error: unknown) {
 async function getPendingCandidateCount() {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await prisma.candidate.count({
+      return await prisma.candidateApplication.count({
         where: { status: "PENDING" },
       });
     } catch (error) {

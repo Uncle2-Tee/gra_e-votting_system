@@ -59,7 +59,7 @@ function delay(milliseconds: number) {
 }
 
 export async function getVoterPortalData(
-  section: "overview" | "candidate-application" | "candidates",
+  section: "overview" | "candidate-application" | "candidates" | "positions",
 ): Promise<VoterPortalData> {
   await connection();
 
@@ -92,7 +92,29 @@ export async function getVoterPortalData(
               },
             })
           : Promise.resolve([]),
-        section !== "candidates"
+        section === "positions"
+          ? prisma.positionTemplate.findMany({
+              orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
+              select: { id: true, title: true },
+            }).then((templates) =>
+              templates.map((template) => ({
+                id: template.id,
+                title: template.title,
+                election: { title: "Global position" },
+              })),
+            )
+          : section === "candidate-application"
+          ? prisma.positionTemplate.findMany({
+              orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
+              select: { id: true, title: true },
+            }).then((templates) =>
+              templates.map((template) => ({
+                id: template.id,
+                title: template.title,
+                election: { title: "Upcoming election" },
+              })),
+            )
+          : section !== "candidates"
           ? prisma.position.findMany({
               where: {
                 includedInElection: true,
@@ -367,7 +389,7 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
   for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
     try {
       const [applications, approvedApplications] = await Promise.all([
-        prisma.candidate.findMany({
+        prisma.candidateApplication.findMany({
           where: { status: "PENDING" },
           orderBy: { createdAt: "asc" },
           select: {
@@ -378,11 +400,10 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
             biography: true,
             photoMimeType: true,
             createdAt: true,
-            election: { select: { title: true } },
-            position: { select: { title: true } },
+            positionTemplate: { select: { title: true } },
           },
         }),
-        prisma.candidate.findMany({
+        prisma.candidateApplication.findMany({
           where: { status: "APPROVED" },
           orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
           select: {
@@ -393,8 +414,7 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
             biography: true,
             photoMimeType: true,
             createdAt: true,
-            election: { select: { title: true } },
-            position: { select: { title: true } },
+            positionTemplate: { select: { title: true } },
           },
         }),
       ]);
@@ -433,8 +453,7 @@ function mapAdminCandidate(application: {
   biography: string | null;
   photoMimeType: string | null;
   createdAt: Date;
-  election: { title: string };
-  position: { title: string };
+  positionTemplate: { title: string };
 }) {
   return {
     id: application.id,
@@ -450,8 +469,8 @@ function mapAdminCandidate(application: {
       application.photoMimeType === "image/webp"
         ? `/admin/candidates/${application.id}/photo`
         : null,
-    electionTitle: application.election.title,
-    positionTitle: application.position.title,
+    electionTitle: "Upcoming election",
+    positionTitle: application.positionTemplate.title,
     submittedAt: application.createdAt.toISOString(),
   };
 }

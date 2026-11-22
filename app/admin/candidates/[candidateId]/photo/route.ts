@@ -23,12 +23,19 @@ export async function GET(
         photoMimeType: true,
       },
     });
-
-    if (!candidate?.photoData || candidate.photoMimeType !== "image/webp") {
+    const application = candidate
+      ? null
+      : await prisma.candidateApplication.findUnique({
+          where: { id: candidateId },
+          select: { status: true, photoData: true, photoMimeType: true },
+        });
+    const photo = candidate ?? application;
+    if (!photo?.photoData || photo.photoMimeType !== "image/webp") {
       return new NextResponse(null, { status: 404 });
     }
 
-    const approvedForVoterDisplay = candidate.status === "APPROVED";
+    const approvedForVoterDisplay =
+      "status" in photo && photo.status === "APPROVED";
     if (!approvedForVoterDisplay) {
       const admin = await getCurrentAdmin();
       if (
@@ -39,10 +46,10 @@ export async function GET(
       }
     }
 
-    return new NextResponse(new Uint8Array(candidate.photoData), {
+    return new NextResponse(new Uint8Array(photo.photoData), {
       headers: {
         "Cache-Control": approvedForVoterDisplay ? "public, max-age=300" : "private, no-store",
-        "Content-Length": String(candidate.photoData.byteLength),
+        "Content-Length": String(photo.photoData.byteLength),
         "Content-Type": "image/webp",
         "X-Content-Type-Options": "nosniff",
       },

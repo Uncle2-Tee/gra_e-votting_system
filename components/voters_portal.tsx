@@ -5,6 +5,7 @@ import {
   ChartNoAxesCombined,
   CheckCircle2,
   ClipboardCheck,
+  ListPlus,
   LockKeyhole,
   ShieldCheck,
   UsersRound,
@@ -16,7 +17,7 @@ import type { VoterPortalData, VoterResultsData } from "@/lib/candidate-types";
 import { getElectionDisplayTitle } from "@/lib/election-display-title";
 import { getPositionColors } from "@/lib/position-colors";
 
-type PortalSection = "overview" | "candidates" | "candidate-application" | "results";
+type PortalSection = "overview" | "positions" | "candidates" | "candidate-application" | "results";
 
 function PageHeading({
   eyebrow,
@@ -838,6 +839,51 @@ export default function VotersPortal({
             />
           </div>
           <Overview data={data} />
+        </>
+      ) : null}
+
+      {section === "positions" && data ? (
+        <>
+          <div className="mb-6">
+            <PageHeading
+              eyebrow="Voter services"
+              title="Election positions"
+              description="View the positions configured for candidate applications and future elections."
+            />
+          </div>
+          {data.databaseStatus === "connected" ? (
+            data.positions.length > 0 ? (
+              <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {data.positions.map((position) => (
+                  <article
+                    key={position.id}
+                    className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
+                  >
+                    <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
+                      <ListPlus className="size-4" />
+                    </span>
+                    <h2
+                      className="mt-4 inline-flex rounded-md border px-2.5 py-1.5 text-sm font-semibold"
+                      style={getPositionColors(position.title).badge}
+                    >
+                      {position.title}
+                    </h2>
+                    <p className="mt-3 text-[11px] leading-5 text-slate-500">
+                      Available for candidate applications when included in an election by the administrator.
+                    </p>
+                  </article>
+                ))}
+              </section>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+                <ListPlus className="mx-auto size-6 text-slate-400" />
+                <h2 className="mt-3 text-sm font-semibold text-slate-800">No positions configured yet</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  The administrator will add positions before scheduling elections.
+                </p>
+              </div>
+            )
+          ) : null}
         </>
       ) : null}
 

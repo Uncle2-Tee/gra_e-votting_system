@@ -59,15 +59,13 @@ export async function reviewCandidate(
     }[]>(Prisma.sql`
       WITH eligible_candidate AS MATERIALIZED (
         SELECT candidate."id"
-        FROM "Candidate" AS candidate
-        JOIN "Election" AS election
-          ON election."id" = candidate."electionId"
+        FROM "CandidateApplication" AS candidate
         WHERE candidate."id" = ${candidateId}::uuid
           AND candidate."status" = 'PENDING'
-        FOR SHARE OF election
+        FOR SHARE
       ),
       updated_candidate AS (
-        UPDATE "Candidate" AS candidate
+        UPDATE "CandidateApplication" AS candidate
         SET
           "status" = ${decision}::"CandidateStatus",
           "reviewedById" = ${admin.id}::uuid,
@@ -92,7 +90,7 @@ export async function reviewCandidate(
           ${auditId}::uuid,
           ${admin.id}::uuid,
           ${decision === "APPROVED" ? "CANDIDATE_APPLICATION_APPROVED" : "CANDIDATE_APPLICATION_REJECTED"},
-          'CANDIDATE',
+          'CANDIDATE_APPLICATION',
           "id"::text,
           ${decision}
         FROM updated_candidate
@@ -102,7 +100,7 @@ export async function reviewCandidate(
         WHEN EXISTS (SELECT 1 FROM updated_candidate) THEN 'reviewed'
         WHEN EXISTS (
           SELECT 1
-          FROM "Candidate"
+          FROM "CandidateApplication"
           WHERE "id" = ${candidateId}::uuid
             AND "status" = 'PENDING'
         ) THEN 'unavailable'
@@ -190,13 +188,13 @@ export async function removeApprovedCandidate(
     }[]>(Prisma.sql`
       WITH approved_candidate AS MATERIALIZED (
         SELECT "id"
-        FROM "Candidate"
+        FROM "CandidateApplication"
         WHERE "id" = ${candidateId}::uuid
           AND "status" = 'APPROVED'
         FOR UPDATE
       ),
       removed_candidate AS (
-        UPDATE "Candidate" AS candidate
+        UPDATE "CandidateApplication" AS candidate
         SET
           "status" = 'INACTIVE'::"CandidateStatus",
           "reviewedById" = ${admin.id}::uuid,
@@ -221,7 +219,7 @@ export async function removeApprovedCandidate(
           ${auditId}::uuid,
           ${admin.id}::uuid,
           'CANDIDATE_APPLICATION_REMOVED',
-          'CANDIDATE',
+          'CANDIDATE_APPLICATION',
           "id"::text,
           'INACTIVE'
         FROM removed_candidate
