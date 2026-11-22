@@ -540,7 +540,7 @@ function Overview({ data }: { data: VoterPortalData }) {
           </span>
           <div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{data.positions.length}</p>
-            <p className="text-[11px] text-slate-500">Candidate applications available</p>
+            <p className="text-[11px] text-slate-500">Positions available</p>
           </div>
         </article>
         <article className="flex items-center gap-3 rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 via-white to-cyan-50/80 p-4 shadow-sm shadow-teal-950/[0.04] transition duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md">
