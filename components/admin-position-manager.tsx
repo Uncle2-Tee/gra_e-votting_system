@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ListPlus, Save, Trash2 } from "lucide-react";
+import { ChevronDown, ListPlus, Save, Trash2 } from "lucide-react";
 import {
   addPositionTemplates,
   removePositionTemplate,
@@ -124,37 +124,51 @@ export default function AdminPositionManager({
         </div>
 
         <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-sm font-semibold text-slate-900">Saved positions</h2>
-            <p className="mt-1 text-[11px] text-slate-500">
-              {positions.length} {positions.length === 1 ? "position" : "positions"} configured
-            </p>
-          </div>
           {positions.length > 0 ? (
-            <ul className="divide-y divide-slate-100">
-              {positions.map((position) => (
-                <li key={position.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <span
-                    className="min-w-0 break-words rounded-md border px-2.5 py-1.5 text-xs font-semibold"
-                    style={getPositionColors(position.title).badge}
-                  >
-                    {position.title}
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 [&::-webkit-details-marker]:hidden">
+                <span>
+                  <span className="block text-sm font-semibold text-slate-900">Saved positions</span>
+                  <span className="mt-1 block text-[11px] text-slate-500">
+                    {positions.length} {positions.length === 1 ? "position" : "positions"} configured
                   </span>
-                  <RemovePositionButton position={position} />
-                </li>
-              ))}
-            </ul>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+                />
+              </summary>
+              <ul className="divide-y divide-slate-100">
+                {positions.map((position) => (
+                  <li key={position.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                    <span
+                      className="min-w-0 break-words rounded-md border px-2.5 py-1.5 text-xs font-semibold"
+                      style={getPositionColors(position.title).badge}
+                    >
+                      {position.title}
+                    </span>
+                    <RemovePositionButton position={position} />
+                  </li>
+                ))}
+              </ul>
+            </details>
           ) : (
-            <div className="px-5 py-12 text-center">
-              <p className="text-sm font-semibold text-slate-700">
-                {databaseStatus === "connected" ? "No positions configured" : "Positions unavailable"}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                {databaseStatus === "connected"
-                  ? "Add positions above. This will not create an election."
-                  : "Try again when the database connection is available."}
-              </p>
-            </div>
+            <>
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h2 className="text-sm font-semibold text-slate-900">Saved positions</h2>
+                <p className="mt-1 text-[11px] text-slate-500">0 positions configured</p>
+              </div>
+              <div className="px-5 py-12 text-center">
+                <p className="text-sm font-semibold text-slate-700">
+                  {databaseStatus === "connected" ? "No positions configured" : "Positions unavailable"}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  {databaseStatus === "connected"
+                    ? "Add positions above. This will not create an election."
+                    : "Try again when the database connection is available."}
+                </p>
+              </div>
+            </>
           )}
         </section>
       </section>
