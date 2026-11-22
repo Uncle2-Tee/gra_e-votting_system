@@ -69,7 +69,8 @@ export async function getVoterPortalData(
         elections,
         positions,
         candidates,
-        approvedCandidatesCount,
+        approvedCandidatesForCount,
+        approvedApplicationsForCount,
         approvedApplications,
       ] = await Promise.all([
         section === "overview"
@@ -134,13 +135,20 @@ export async function getVoterPortalData(
             })
           : Promise.resolve([]),
         section === "overview"
-          ? prisma.candidate.count({
+          ? prisma.candidate.findMany({
               where: {
                 status: "APPROVED",
                 position: { is: { includedInElection: true } },
               },
+              select: { id: true, applicantLookupHash: true },
             })
-          : Promise.resolve(undefined),
+          : Promise.resolve([]),
+        section === "overview"
+          ? prisma.candidateApplication.findMany({
+              where: { status: "APPROVED" },
+              select: { id: true, applicantLookupHash: true },
+            })
+          : Promise.resolve([]),
         section === "candidates"
             ? prisma.candidateApplication.findMany({
                 where: { status: "APPROVED" },
@@ -160,6 +168,28 @@ export async function getVoterPortalData(
       const applicationLookupHashes = new Set(
         approvedApplications.map((application) => application.applicantLookupHash),
       );
+      const candidateCountRecords =
+        section === "overview"
+          ? approvedCandidatesForCount
+          : candidates.map(({ id, applicantLookupHash }) => ({
+              id,
+              applicantLookupHash,
+            }));
+      const applicationCountRecords =
+        section === "overview"
+          ? approvedApplicationsForCount
+          : approvedApplications.map(({ id, applicantLookupHash }) => ({
+              id,
+              applicantLookupHash,
+            }));
+      const approvedCandidateKeys = new Set([
+        ...candidateCountRecords.map(
+          (candidate) => candidate.applicantLookupHash ?? `candidate:${candidate.id}`,
+        ),
+        ...applicationCountRecords.map(
+          (application) => application.applicantLookupHash ?? `application:${application.id}`,
+        ),
+      ]);
       const voterCandidates = [
         ...approvedApplications.map((application) => ({
             id: application.id,
@@ -219,7 +249,7 @@ export async function getVoterPortalData(
             },
           ];
         }),
-        approvedCandidatesCount: approvedCandidatesCount ?? candidates.length,
+        approvedCandidatesCount: approvedCandidateKeys.size,
         positions: positions.map((position) => ({
           id: position.id,
           title: position.title,
