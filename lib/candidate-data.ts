@@ -65,7 +65,13 @@ export async function getVoterPortalData(
 
   for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
     try {
-      const [elections, positions, candidates, approvedCandidatesCount] = await Promise.all([
+      const [
+        elections,
+        positions,
+        candidates,
+        approvedCandidatesCount,
+        approvedApplications,
+      ] = await Promise.all([
         section === "overview"
           ? prisma.election.findMany({
               where: {
@@ -118,6 +124,7 @@ export async function getVoterPortalData(
               select: {
                 id: true,
                 nameCiphertext: true,
+                applicantLookupHash: true,
                 biography: true,
                 photoMimeType: true,
                 position: { select: { title: true } },
@@ -134,7 +141,55 @@ export async function getVoterPortalData(
               },
             })
           : Promise.resolve(undefined),
+        section === "candidates"
+            ? prisma.candidateApplication.findMany({
+                where: { status: "APPROVED" },
+                orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
+                select: {
+                  id: true,
+                  nameCiphertext: true,
+                  applicantLookupHash: true,
+                  biography: true,
+                  photoMimeType: true,
+                  positionTemplate: { select: { title: true } },
+                },
+              })
+            : Promise.resolve([]),
       ]);
+
+      const applicationLookupHashes = new Set(
+        approvedApplications.map((application) => application.applicantLookupHash),
+      );
+      const voterCandidates = [
+        ...approvedApplications.map((application) => ({
+            id: application.id,
+            name: decryptVoterField(application.nameCiphertext, "candidate-name"),
+            biography: application.biography,
+            photoUrl:
+              application.photoMimeType === "image/webp"
+                ? `/admin/candidates/${application.id}/photo`
+                : null,
+            positionTitle: application.positionTemplate.title,
+            electionTitle: "Upcoming election",
+        })),
+        ...candidates
+            .filter(
+              (candidate) =>
+                !candidate.applicantLookupHash ||
+                !applicationLookupHashes.has(candidate.applicantLookupHash),
+            )
+            .map((candidate) => ({
+              id: candidate.id,
+              name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
+              biography: candidate.biography,
+              photoUrl:
+                candidate.photoMimeType === "image/webp"
+                  ? `/admin/candidates/${candidate.id}/photo`
+                  : null,
+              positionTitle: candidate.position.title,
+              electionTitle: candidate.election.title,
+            })),
+      ];
 
       return {
         databaseStatus: "connected",
@@ -170,17 +225,7 @@ export async function getVoterPortalData(
           title: position.title,
           electionTitle: position.election.title,
         })),
-        candidates: candidates.map((candidate) => ({
-          id: candidate.id,
-          name: decryptVoterField(candidate.nameCiphertext, "candidate-name"),
-          biography: candidate.biography,
-          photoUrl:
-            candidate.photoMimeType === "image/webp"
-              ? `/admin/candidates/${candidate.id}/photo`
-              : null,
-          positionTitle: candidate.position.title,
-          electionTitle: candidate.election.title,
-        })),
+        candidates: voterCandidates,
       };
     } catch (error) {
       if (
