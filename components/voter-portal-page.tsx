@@ -4,7 +4,7 @@ import PageLoading from "@/components/page-loading";
 import { getVoterPortalData, getVoterResultsData } from "@/lib/candidate-data";
 import type { VoterResultsData } from "@/lib/candidate-types";
 
-type PortalSection = "overview" | "positions" | "candidates" | "candidate-application" | "results";
+type PortalSection = "overview" | "candidates" | "candidate-application" | "results";
 
 async function VoterPortalContent({ section }: { section: PortalSection }) {
   const [data, results] = await Promise.all([

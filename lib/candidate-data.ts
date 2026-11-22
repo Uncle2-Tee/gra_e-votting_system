@@ -59,7 +59,7 @@ function delay(milliseconds: number) {
 }
 
 export async function getVoterPortalData(
-  section: "overview" | "candidate-application" | "candidates" | "positions",
+  section: "overview" | "candidate-application" | "candidates",
 ): Promise<VoterPortalData> {
   await connection();
 
@@ -92,7 +92,7 @@ export async function getVoterPortalData(
               },
             })
           : Promise.resolve([]),
-        section === "positions"
+        section === "overview" || section === "candidate-application"
           ? prisma.positionTemplate.findMany({
               orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
               select: { id: true, title: true },
@@ -103,30 +103,6 @@ export async function getVoterPortalData(
                 election: { title: "Global position" },
               })),
             )
-          : section === "candidate-application"
-          ? prisma.positionTemplate.findMany({
-              orderBy: [{ displayOrder: "asc" }, { title: "asc" }],
-              select: { id: true, title: true },
-            }).then((templates) =>
-              templates.map((template) => ({
-                id: template.id,
-                title: template.title,
-                election: { title: "Upcoming election" },
-              })),
-            )
-          : section !== "candidates"
-          ? prisma.position.findMany({
-              where: {
-                includedInElection: true,
-                election: { status: { not: "ARCHIVED" } },
-              },
-              orderBy: [{ election: { startsAt: "asc" } }, { displayOrder: "asc" }],
-              select: {
-                id: true,
-                title: true,
-                election: { select: { title: true } },
-              },
-            })
           : Promise.resolve([]),
         section !== "candidate-application"
           ? prisma.candidate.findMany({
@@ -389,7 +365,7 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
   for (let attempt = 0; attempt < MAX_VOTER_PORTAL_DATABASE_ATTEMPTS; attempt += 1) {
     try {
       const [applications, approvedApplications] = await Promise.all([
-        prisma.candidateApplication.findMany({
+        prisma.candidate.findMany({
           where: { status: "PENDING" },
           orderBy: { createdAt: "asc" },
           select: {
@@ -400,10 +376,11 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
             biography: true,
             photoMimeType: true,
             createdAt: true,
-            positionTemplate: { select: { title: true } },
+            election: { select: { title: true } },
+            position: { select: { title: true } },
           },
         }),
-        prisma.candidateApplication.findMany({
+        prisma.candidate.findMany({
           where: { status: "APPROVED" },
           orderBy: [{ reviewedAt: "desc" }, { createdAt: "desc" }],
           select: {
@@ -414,7 +391,8 @@ export async function getPendingCandidateData(): Promise<PendingCandidateData> {
             biography: true,
             photoMimeType: true,
             createdAt: true,
-            positionTemplate: { select: { title: true } },
+            election: { select: { title: true } },
+            position: { select: { title: true } },
           },
         }),
       ]);
@@ -453,7 +431,8 @@ function mapAdminCandidate(application: {
   biography: string | null;
   photoMimeType: string | null;
   createdAt: Date;
-  positionTemplate: { title: string };
+  election: { title: string };
+  position: { title: string };
 }) {
   return {
     id: application.id,
@@ -469,8 +448,8 @@ function mapAdminCandidate(application: {
       application.photoMimeType === "image/webp"
         ? `/admin/candidates/${application.id}/photo`
         : null,
-    electionTitle: "Upcoming election",
-    positionTitle: application.positionTemplate.title,
+    electionTitle: application.election.title,
+    positionTitle: application.position.title,
     submittedAt: application.createdAt.toISOString(),
   };
 }

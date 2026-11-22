@@ -8,7 +8,6 @@ import {
   ChartNoAxesCombined,
   FilePlus2,
   LayoutDashboard,
-  ListPlus,
   Menu,
   Vote,
   X,
@@ -18,7 +17,6 @@ import NavigationLinkStatus from "@/components/navigation-link-status";
 
 const navigation = [
   { section: "overview", label: "Overview", href: "/vote/overview", icon: LayoutDashboard },
-  { section: "positions", label: "Positions", href: "/vote/positions", icon: ListPlus },
   { section: "candidate-application", label: "Candidate application", href: "/vote/candidate-application", icon: FilePlus2 },
   { section: "candidates", label: "Approved candidates", href: "/vote/candidates", icon: BadgeCheck },
   { section: "ballot", label: "Vote", href: "/vote/access", icon: Vote },

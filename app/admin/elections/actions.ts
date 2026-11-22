@@ -111,7 +111,6 @@ export async function addPositionTemplates(
 
     revalidatePath("/admin/positions");
     revalidatePath("/admin/elections");
-    revalidatePath("/vote/positions");
     revalidatePath("/vote/overview");
     revalidatePath("/vote/candidate-application");
     return {
@@ -175,7 +174,6 @@ export async function removePositionTemplate(
     });
     revalidatePath("/admin/positions");
     revalidatePath("/admin/elections");
-    revalidatePath("/vote/positions");
     revalidatePath("/vote/overview");
     revalidatePath("/vote/candidate-application");
     return { error: null, success: `"${position.title}" was removed. No election was changed.` };
