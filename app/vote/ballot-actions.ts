@@ -205,7 +205,7 @@ export async function requestVoterId(
   if (issueResult.status === "unavailable") {
     return {
       ...INITIAL_STATE,
-      message: "If the supplied details match the eligible voter roster and the election is open, you can continue to your ballot.",
+      message: "Please, input valid credentials.",
     };
   }
   if (issueResult.status === "cooldown") {

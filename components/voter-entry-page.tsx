@@ -170,7 +170,7 @@ export default function VoterEntryPage({
               <div>
                 <h2 className="text-base font-semibold text-slate-950">Confirm your voter details</h2>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Enter your name and staff number as recorded in the eligible voter roster.
+                  Enter your name and staff number.
                 </p>
               </div>
 
